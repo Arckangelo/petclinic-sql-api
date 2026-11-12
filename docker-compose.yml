@@ -11,4 +11,16 @@ services:
       test: ["CMD-SHELL", "pg_isready -U petclinic"]
       interval: 5s
       retries: 10
+  api:
+    image: springcommunity/spring-petclinic-rest
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: postgres,spring-data-jpa
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/petclinic
+      SPRING_DATASOURCE_USERNAME: petclinic
+      SPRING_DATASOURCE_PASSWORD: petclinic
+    ports:
+      - "9966:9966"
 
