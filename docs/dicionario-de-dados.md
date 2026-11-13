@@ -169,3 +169,58 @@ data faz sentido, e lê `dd/mm/aaaa` como mês/dia sem avisar: `04/03/2010` vira
 O banco também não compara a data da visita com o nascimento do pet. Nada aponta para
 `visits`, então uma visita pode ser apagada livremente; a chave estrangeira só exige que
 as visitas de um pet saiam antes dele.
+
+## vet_specialties
+
+A tabela liga os veterinários às suas especialidades. Um veterinário pode ter várias
+especialidades, e uma especialidade pode ser de vários veterinários.
+
+### Colunas
+
+Legenda: **Nulo? Sim** = a coluna aceita ficar vazia; **Não** = preenchimento obrigatório.
+
+| Coluna | Tipo | Nulo? | Padrão | Descrição |
+|:---|:---|:---:|:---|:---|
+| `vet_id` | `integer` | Não | — | Veterinário (FK → `vets.id`) |
+| `specialty_id` | `integer` | Não | — | Especialidade (FK → `specialties.id`) |
+
+A tabela não tem chave primária. A mesma ligação não pode se repetir por causa da regra
+`UNIQUE` no par `(vet_id, specialty_id)`, junto com o `NOT NULL` nas duas colunas.
+
+### Índices
+
+| Nome | Tipo | Colunas | Observações |
+|:---|:---|:---|:---|
+| `vet_specialties_vet_id_specialty_id_key` | UNIQUE CONSTRAINT | `vet_id`, `specialty_id` | Impede a mesma ligação duas vezes |
+
+Não há índice só em `specialty_id`.
+
+### Relacionamentos
+
+Cada linha liga um veterinário (`vet_specialties.vet_id → vets.id`) a uma especialidade
+(`vet_specialties.specialty_id → specialties.id`).
+
+Nenhuma tabela aponta para `vet_specialties`.
+
+```
+"vet_specialties_specialty_id_fkey" FOREIGN KEY (specialty_id) REFERENCES specialties(id)
+"vet_specialties_vet_id_fkey" FOREIGN KEY (vet_id) REFERENCES vets(id)
+```
+### Fora do banco
+
+Regras que o banco **não** garante e que ficam por conta da aplicação, e as que ele garante.
+Testado no banco do ambiente (docker compose), dentro de transações desfeitas com `ROLLBACK`.
+
+| Situação | O banco... | Evidência |
+|:---|:---:|:---|
+| Ligação repetida (mesmo vet e mesma especialidade) | **recusa** | `INSERT INTO vet_specialties (vet_id, specialty_id) VALUES (2, 1);` → `ERROR: duplicate key value violates unique constraint "vet_specialties_vet_id_specialty_id_key"` |
+| Ligação com especialidade nula | **recusa** | `INSERT INTO vet_specialties (vet_id, specialty_id) VALUES (2, NULL);` → `ERROR: null value in column "specialty_id" of relation "vet_specialties" violates not-null constraint` |
+| Veterinário que não existe | **recusa** | `INSERT INTO vet_specialties (vet_id, specialty_id) VALUES (9999, 1);` → `ERROR: ... violates foreign key constraint "vet_specialties_vet_id_fkey"` |
+| Especialidade que não existe | **recusa** | `INSERT INTO vet_specialties (vet_id, specialty_id) VALUES (2, 9999);` → `ERROR: ... violates foreign key constraint "vet_specialties_specialty_id_fkey"` |
+| Apagar um veterinário que tem especialidade | **recusa** | `DELETE FROM vets WHERE id = 2;` → `ERROR: ... violates foreign key constraint "vet_specialties_vet_id_fkey" on table "vet_specialties"` |
+| Apagar uma especialidade que está em uso | **recusa** | `DELETE FROM specialties WHERE id = 3;` → `ERROR: ... violates foreign key constraint "vet_specialties_specialty_id_fkey" on table "vet_specialties"` |
+
+A ligação repetida é barrada pela regra `UNIQUE` no par `(vet_id, specialty_id)`, e o
+`NOT NULL` nas duas colunas fecha a brecha do `NULL`, que o `UNIQUE` sozinho deixaria passar.
+As chaves estrangeiras impedem ligar a um vet ou especialidade que não existe, e impedem
+apagar um vet ou uma especialidade enquanto houver ligação com eles.
