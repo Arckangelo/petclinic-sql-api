@@ -69,7 +69,38 @@ k6/                teste de carga leve
 
 > Um item por bug: passos, esperado, obtido e evidência no banco. Link para o Jira ou para a issue oficial, se houver.
 
-Nenhum até agora.
+Ambiente dos dois achados: `springcommunity/spring-petclinic-rest:latest` (4.0.2) com `postgres:16.3`, via
+`docker compose`. Ambos reproduzidos do zero (`docker compose down -v` e `up -d`).
+
+### BUG-01 · API responde 500 em vez de 400 quando o id do dono não é numérico
+
+- **Passos:** `curl -i http://localhost:9966/petclinic/api/owners/abc` (ou abrir o endereço no navegador).
+  Pelo Swagger não reproduz, porque ele valida o campo antes de enviar.
+- **Esperado:** `400 Bad Request`, já que o erro é do cliente. O próprio contrato da API lista o 400 para esse endpoint.
+- **Obtido:** `500 Internal Server Error`.
+- **Evidência:** `HTTP/1.1 500`, com `"title": "MethodArgumentTypeMismatchException"` e
+  `"detail": "An unexpected error occurred while processing your request"`. O corpo expõe o nome interno da
+  exceção Java. O erro acontece antes de qualquer consulta, então o banco não muda.
+
+### BUG-02 · Cada reinício da API cria mais uma cópia de cada índice do banco
+
+- **Passos:** `docker compose down -v` → `up -d` → no `psql`, `\d types` → `docker compose restart api` →
+  `\d types` de novo.
+- **Esperado:** continuar com um índice só na coluna `name`.
+- **Obtido:** aparece `types_name_idx1`, igual ao primeiro; a cada reinício, mais um (`idx2`, `idx3`...).
+  Acontece em todos os índices criados pelo script (`owners`, `pets`, `vets`, `visits`, `specialties`, `types`).
+- **Evidência no banco** (`\d types`, depois de um reinício):
+
+  ```
+  "types_name_idx" btree (name)
+  "types_name_idx1" btree (name)
+  ```
+
+- **Causa provável:** a API roda o `schema.sql` a cada início (`spring.sql.init.mode=always`), confiando que ele
+  é idempotente. Tabelas (`CREATE TABLE IF NOT EXISTS`) e dados (`INSERT ... WHERE NOT EXISTS`) estão protegidos,
+  mas o `CREATE INDEX` não tem nome nem `IF NOT EXISTS`, e o PostgreSQL gera um nome novo a cada execução.
+- **Impacto:** baixo. Não quebra funcionalidade, mas gasta espaço e deixa cada gravação mais lenta com o tempo.
+  Um teste só de API não pegaria esse defeito.
 
 ## O que ficou de fora
 
