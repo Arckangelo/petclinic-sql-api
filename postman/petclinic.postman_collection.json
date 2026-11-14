@@ -1,8 +1,8 @@
 {
   "info": {
     "_postman_id": "aea4e900-90ad-4f28-bb67-c78088455d68",
-    "name": "PetClinic",
-    "description": "Testes de API do [Spring PetClinic REST](https://github.com/spring-petclinic/spring-petclinic-rest), rodando localmente com PostgreSQL pelo `docker compose`.\n\n**Como rodar**\n\n- Suba o ambiente: `docker compose up -d --wait`.\n- Use o environment `local` (`baseUrl` = `http://localhost:9966/petclinic/api`).\n- Rode a coleção inteira, na ordem, pelo Runner ou pelo Newman: `npx newman run postman/petclinic.postman_collection.json -e postman/local.postman_environment.json`.\n\n**Como está organizada**\n\n- Os requests passam ids entre si por variáveis da coleção, por isso a ordem importa.\n- Cada request de teste confere status, corpo e tempo de resposta. O valor esperado vem do que foi enviado, nunca da própria resposta.\n- Os requests `Limpeza:` no fim apagam só os dados criados pelo fluxo e aceitam \"já removido\" (204 ou 404).\n- O nome de cada request leva o ID do caso (`CT-API-...`), o mesmo de `docs/casos-de-teste.md`.",
+    "name": "petclinic",
+    "description": "#### Testes de API do [Spring PetClinic REST](https://github.com/spring-petclinic/spring-petclinic-rest), rodando localmente com PostgreSQL pelo `docker compose`.\n\n**Como rodar**\n\n- Suba o ambiente: `docker compose up -d --wait`.\n    \n- Use o environment `local` (`baseUrl` = `http://localhost:9966/petclinic/api`).\n    \n- Rode a coleção inteira, na ordem, pelo Runner ou pelo Newman: `npx newman run postman/petclinic.postman_collection.json -e postman/local.postman_environment.json`.\n    \n\n**Como está organizada**\n\n- Os requests passam ids entre si por variáveis da coleção, por isso a ordem importa.\n    \n- Cada request de teste confere status, corpo e tempo de resposta. O valor esperado vem do que foi enviado, nunca da própria resposta.\n    \n- Os requests `Limpeza:` no fim apagam só os dados criados pelo fluxo e aceitam \"já removido\" (204 ou 404).\n    \n- O nome de cada request leva o ID do caso (`CT-API-...`), o mesmo de `docs/casos-de-teste.md`.\n    \n\n[Learn more about Postman Collections.](https://learning.postman.com/docs/collections/collections-overview/)",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "60190256",
     "_collection_link": "https://go.postman.co/collection/60190256-aea4e900-90ad-4f28-bb67-c78088455d68?source=collection_link"
@@ -126,6 +126,44 @@
               ],
               "path": [
                 "owners"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "CT-API-OWNERS-07",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// PUT devolve 204 sem corpo: não use pm.response.json() aqui\nconst sent = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));\nconst ownerId = pm.collectionVariables.get(\"ownerId\");\n\npm.test(\"status 204\", () => pm.response.to.have.status(204));\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// Sem corpo na resposta, a conferência é feita consultando o dono\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/owners/\" + ownerId, (err, res) => {\n  pm.test(\"GET do dono devolve 200\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(200);\n  });\n\n  const owner = res.json();\n\n  pm.test(\"dono tem os novos valores enviados\", () => {\n    [\"firstName\", \"lastName\", \"address\", \"city\", \"telephone\"].forEach((field) => {\n      pm.expect(owner[field], field).to.eql(sent[field]);\n    });\n  });\n\n  pm.test(\"id continua o mesmo\", () => {\n    pm.expect(String(owner.id)).to.eql(String(ownerId));\n  });\n});\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"firstName\": \"Maria\",\n    \"lastName\": \"Souza\",\n    \"address\": \"Rua das Flores, 99\",\n    \"city\": \"Recife\",\n    \"telephone\": \"8199998888\",\n    \"pets\": [],\n    \"id\": 37\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/owners/{{ownerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners",
+                "{{ownerId}}"
               ]
             }
           },
