@@ -1,0 +1,260 @@
+{
+  "info": {
+    "_postman_id": "aea4e900-90ad-4f28-bb67-c78088455d68",
+    "name": "PetClinic",
+    "description": "Testes de API do [Spring PetClinic REST](https://github.com/spring-petclinic/spring-petclinic-rest), rodando localmente com PostgreSQL pelo `docker compose`.\n\n**Como rodar**\n\n- Suba o ambiente: `docker compose up -d --wait`.\n- Use o environment `local` (`baseUrl` = `http://localhost:9966/petclinic/api`).\n- Rode a coleção inteira, na ordem, pelo Runner ou pelo Newman: `npx newman run postman/petclinic.postman_collection.json -e postman/local.postman_environment.json`.\n\n**Como está organizada**\n\n- Os requests passam ids entre si por variáveis da coleção, por isso a ordem importa.\n- Cada request de teste confere status, corpo e tempo de resposta. O valor esperado vem do que foi enviado, nunca da própria resposta.\n- Os requests `Limpeza:` no fim apagam só os dados criados pelo fluxo e aceitam \"já removido\" (204 ou 404).\n- O nome de cada request leva o ID do caso (`CT-API-...`), o mesmo de `docs/casos-de-teste.md`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "60190256",
+    "_collection_link": "https://go.postman.co/collection/60190256-aea4e900-90ad-4f28-bb67-c78088455d68?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "Owners",
+      "item": [
+        {
+          "name": "CT-API-OWNERS-01",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Valor esperado vem do que foi enviado, nunca da própria resposta\nconst sent = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));\nconst body = pm.response.json();\n\npm.test(\"status 201\", () => pm.response.to.have.status(201));\n\npm.test(\"campos iguais aos enviados\", () => {\n  [\"firstName\", \"lastName\", \"address\", \"city\", \"telephone\"].forEach((field) => {\n    pm.expect(body[field], field).to.eql(sent[field]);\n  });\n});\n\npm.test(\"id gerado é um número\", () => {\n  pm.expect(body.id).to.be.a(\"number\");\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// Usado pelos próximos requests do fluxo\npm.collectionVariables.set(\"ownerId\", body.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Maria\",\n  \"lastName\": \"Souza\",\n  \"address\": \"Rua das Flores, 100\",\n  \"city\": \"Recife\",\n  \"telephone\": \"8199998888\"\n}\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/owners",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "CT-API-OWNERS-13a",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// O corpo cru tem o texto {{ownerId}}; replaceIn troca pelo valor real\nconst sent = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));\nconst body = pm.response.json();\nconst before = JSON.parse(pm.collectionVariables.get(\"ownerBefore\"));\n\npm.test(\"status 201\", () => pm.response.to.have.status(201));\n\npm.test(\"id da resposta é diferente do id enviado\", () => {\n  pm.expect(body.id).to.not.eql(sent.id);\n});\n\npm.test(\"campos iguais aos enviados\", () => {\n  [\"firstName\", \"lastName\", \"address\", \"city\", \"telephone\"].forEach((field) => {\n    pm.expect(body[field], field).to.eql(sent[field]);\n  });\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// O dono do id enviado não pode ter sido sobrescrito\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/owners/\" + sent.id, (err, res) => {\n  pm.test(\"dono do id enviado continua igual\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.json()).to.eql(before);\n  });\n});\n\n// Dono criado por este request, para apagar no fim do fluxo\npm.collectionVariables.set(\"existingIdOwnerId\", body.id);\n"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Foto do dono antes do POST, para comparar depois\nconst url = pm.environment.get(\"baseUrl\") + \"/owners/\" + pm.collectionVariables.get(\"ownerId\");\npm.sendRequest(url, (err, res) => {\n  if (err) throw err;\n  if (res.code !== 200) {\n    throw new Error(\"Dono \" + pm.collectionVariables.get(\"ownerId\") + \" não existe (status \" + res.code + \"). Rode o CT-API-OWNERS-01 antes.\");\n  }\n  pm.collectionVariables.set(\"ownerBefore\", JSON.stringify(res.json()));\n});\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"firstName\": \"Jão\",\n    \"lastName\": \"Souza\",\n    \"address\": \"Rua das Flores, 110\",\n    \"city\": \"Recife\",\n    \"telephone\": \"8199998887\",\n    \"id\": {{ownerId}}\n\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/owners",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "CT-API-OWNERS-13b",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const sent = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));\nconst body = pm.response.json();\n\npm.test(\"status 201\", () => pm.response.to.have.status(201));\n\npm.test(\"id da resposta é diferente do id enviado\", () => {\n  pm.expect(body.id).to.not.eql(sent.id);\n});\n\npm.test(\"campos iguais aos enviados\", () => {\n  [\"firstName\", \"lastName\", \"address\", \"city\", \"telephone\"].forEach((field) => {\n    pm.expect(body[field], field).to.eql(sent[field]);\n  });\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// Nenhum dono pode ter nascido com o id enviado\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/owners/\" + sent.id, (err, res) => {\n  pm.test(\"nenhum dono foi criado com o id enviado\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(404);\n  });\n});\n\n// Dono criado por este request, para apagar no fim do fluxo\npm.collectionVariables.set(\"missingIdOwnerId\", body.id);\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"firstName\": \"Jão\",\n    \"lastName\": \"Souza\",\n    \"address\": \"Rua das Flores, 110\",\n    \"city\": \"Recife\",\n    \"telephone\": \"8199998887\",\n    \"id\": 9999\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/owners",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Limpeza: CT-API-OWNERS-01",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// URL já com o id real (ex.: http://localhost:9966/petclinic/api/owners/21)\nconst url = pm.variables.replaceIn(pm.request.url.toString());\n\n// \"Já removido\" também é sucesso para uma limpeza\npm.test(\"dono apagado ou já removido (204 ou 404)\", () => {\n  pm.expect(pm.response.code).to.be.oneOf([204, 404]);\n});\n\n// Confere que o dono não existe mais\npm.sendRequest(url, (err, res) => {\n  pm.test(\"dono não existe mais (GET devolve 404)\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(404);\n  });\n});\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/owners/{{ownerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners",
+                "{{ownerId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Limpeza: CT-API-OWNERS-13a",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// URL já com o id real (ex.: http://localhost:9966/petclinic/api/owners/21)\nconst url = pm.variables.replaceIn(pm.request.url.toString());\n\n// \"Já removido\" também é sucesso para uma limpeza\npm.test(\"dono apagado ou já removido (204 ou 404)\", () => {\n  pm.expect(pm.response.code).to.be.oneOf([204, 404]);\n});\n\n// Confere que o dono não existe mais\npm.sendRequest(url, (err, res) => {\n  pm.test(\"dono não existe mais (GET devolve 404)\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(404);\n  });\n});\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "text"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/owners/{{existingIdOwnerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners",
+                "{{existingIdOwnerId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Limpeza: CT-API-OWNERS-13b",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// URL já com o id real (ex.: http://localhost:9966/petclinic/api/owners/21)\nconst url = pm.variables.replaceIn(pm.request.url.toString());\n\n// \"Já removido\" também é sucesso para uma limpeza\npm.test(\"dono apagado ou já removido (204 ou 404)\", () => {\n  pm.expect(pm.response.code).to.be.oneOf([204, 404]);\n});\n\n// Confere que o dono não existe mais\npm.sendRequest(url, (err, res) => {\n  pm.test(\"dono não existe mais (GET devolve 404)\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(404);\n  });\n});\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/owners/{{missingIdOwnerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners",
+                "{{missingIdOwnerId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "ownerBefore",
+      "value": ""
+    },
+    {
+      "key": "ownerId",
+      "value": ""
+    },
+    {
+      "key": "missingIdOwnerId",
+      "value": ""
+    },
+    {
+      "key": "existingIdOwnerId",
+      "value": ""
+    }
+  ]
+}

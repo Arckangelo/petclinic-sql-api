@@ -1,6 +1,6 @@
 # Casos de teste — petclinic-sql-api
 
-Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um por teste a automatizar, identificados pelo ID CT que vai no comentário acima do teste no código. Os arquivos de cada seção são os previstos em `tests/api/`; nenhum existe ainda. Total: 75 casos.
+Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um por teste a automatizar, identificados pelo ID CT que vai no comentário acima do teste no código. Os arquivos de cada seção são os previstos em `tests/api/`; nenhum existe ainda. Total: 76 casos.
 
 **Notas gerais**
 
@@ -18,7 +18,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 
 | Área | Arquivo | Casos |
 |---|---|---|
-| API | [tests/api/test_owners.py](#testsapitest_ownerspy) | 12 |
+| API | [tests/api/test_owners.py](#testsapitest_ownerspy) | 13 |
 | API | [tests/api/test_pets.py](#testsapitest_petspy) | 13 |
 | API | [tests/api/test_visits.py](#testsapitest_visitspy) | 12 |
 | API | [tests/api/test_pet_types.py](#testsapitest_pet_typespy) | 8 |
@@ -27,7 +27,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | API | [tests/api/test_users.py](#testsapitest_userspy) | 9 |
 | Bugs conhecidos | [tests/api/known_bugs/test_http_status.py](#testsapiknown_bugstest_http_statuspy) | 1 |
 | Bugs conhecidos | [tests/api/known_bugs/test_schema_indexes.py](#testsapiknown_bugstest_schema_indexespy) | 1 |
-| **Total** | | **75** |
+| **Total** | | **76** |
 
 ## API
 
@@ -207,6 +207,21 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Resultado esperado** | Status 200 e o mesmo conjunto de ids nos dois lados (os dois donos do prefixo, sem o terceiro). |
 | **Status** | Não executado |
 | **Observações** | Busca usa o índice `owners_last_name_idx`. |
+
+#### CT-API-OWNERS-13 — Criar dono com id no corpo
+
+| Campo | Descrição |
+|---|---|
+| **Módulo / Área** | API › Donos › Criação |
+| **Tipo de teste** | Segurança – atribuição em massa (campo somente leitura) |
+| **Prioridade** | Alta |
+| **Objetivo** | Garantir que o id enviado no corpo é ignorado: o banco gera o id, e nenhum dono existente é sobrescrito. |
+| **Pré-condições** | Dono A criado via API. |
+| **Dados de teste** | Dono padrão com id = id do dono A; dono padrão com id = maior id de `owners` + 1000, lido do banco na hora. |
+| **Passos** | 1. Guardar a linha do dono A, lida do banco.<br>2. Enviar POST /api/owners com id = id do dono A.<br>3. Enviar POST /api/owners com id = maior id + 1000.<br>4. Conferir no banco o dono A, as linhas com os ids devolvidos e o id inexistente enviado. |
+| **Resultado esperado** | Passos 2 e 3: status 201, com um id no corpo diferente do enviado.<br>Passo 4: o dono A está igual ao do passo 1; há uma linha nova para cada id devolvido, com os dados enviados; nenhuma linha tem o id inexistente enviado. |
+| **Status** | Não executado |
+| **Observações** | O contrato marca o id do dono como somente leitura (readOnly). Comportamento seguro: não é bug.<br>O id inexistente fica longe do maior id: com maior id + 1, o banco poderia gerar justamente esse id e mascarar a falha.<br>Conferido à mão em 2026-11-14 (Postman, e curl com consulta ao banco): id 1 e id 9999 no corpo → 201 com ids 13 e 14 gerados pelo banco; o dono 1 ficou intacto e nenhuma linha com id 9999. |
 
 ### tests/api/test_pets.py
 
