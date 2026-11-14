@@ -154,6 +154,21 @@ Ambiente dos dois achados: `springcommunity/spring-petclinic-rest:latest` (4.0.2
 - **Impacto:** baixo por reinício, mas acumula: cada cópia ocupa espaço e o banco atualiza todas a cada
   `INSERT` e `UPDATE` nessas tabelas. Um teste só de API não pegaria esse defeito.
 
+### Observações
+
+Diferenças que não quebram o funcionamento, mas ficam registradas para a fase 5 (contrato).
+
+**OBS-01 · Contrato documenta 200 no PUT e no DELETE de dono; a API devolve 204**
+
+- **Onde:** `PUT /api/owners/{ownerId}` e `DELETE /api/owners/{ownerId}`.
+- **Contrato** (`/petclinic/v3/api-docs`): lista `200` como resposta de sucesso, sem `204`.
+- **Obtido:** `204 No Content`, sem corpo, nos dois. Conferido em 2026-11-14 com um dono criado só para isso,
+  e pelos testes `CT-API-OWNERS-07` e `Limpeza:` da coleção do Postman.
+- **Por que não é bug:** `204` é a resposta adequada para "alterado" ou "apagado" sem nada a devolver, e o banco
+  recebe a mudança certa. O defeito está na documentação, que não descreve o que a API faz.
+- **Efeito nos testes:** quem seguir o contrato e esperar `200` vai ver o teste falhar. Na fase 5, a validação de
+  contrato deve apontar essa diferença.
+
 ## O que ficou de fora
 
 > Preencher no fim, com o motivo.
