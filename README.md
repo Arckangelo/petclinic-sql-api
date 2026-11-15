@@ -158,16 +158,23 @@ Ambiente dos dois achados: `springcommunity/spring-petclinic-rest:latest` (4.0.2
 
 Diferenças que não quebram o funcionamento, mas ficam registradas para a fase 5 (contrato).
 
-**OBS-01 · Contrato documenta 200 no PUT e no DELETE de dono; a API devolve 204**
+**OBS-01 · Contrato documenta 200 como sucesso, mas a API devolve 201 ou 204**
 
-- **Onde:** `PUT /api/owners/{ownerId}` e `DELETE /api/owners/{ownerId}`.
-- **Contrato** (`/petclinic/v3/api-docs`): lista `200` como resposta de sucesso, sem `204`.
-- **Obtido:** `204 No Content`, sem corpo, nos dois. Conferido em 2026-11-14 com um dono criado só para isso,
-  e pelos testes `CT-API-OWNERS-07` e `Limpeza:` da coleção do Postman.
-- **Por que não é bug:** `204` é a resposta adequada para "alterado" ou "apagado" sem nada a devolver, e o banco
-  recebe a mudança certa. O defeito está na documentação, que não descreve o que a API faz.
-- **Efeito nos testes:** quem seguir o contrato e esperar `200` vai ver o teste falhar. Na fase 5, a validação de
-  contrato deve apontar essa diferença.
+| Endpoint | Contrato (`/petclinic/v3/api-docs`) | Obtido |
+|:---|:---|:---|
+| `PUT /api/owners/{ownerId}` | `200` | `204 No Content` |
+| `DELETE /api/owners/{ownerId}` | `200` | `204 No Content` |
+| `DELETE /api/pets/{petId}` | `200` | `204 No Content` |
+| `POST /api/pettypes` | `200` | `201 Created` |
+| `DELETE /api/pettypes/{petTypeId}` | `200` | `204 No Content` |
+| `DELETE /api/visits/{visitId}` | `200` | `204 No Content` |
+
+- **Como foi conferido:** em 2026-11-14, com dados criados só para isso e apagados em seguida, e pelos testes
+  `CT-API-OWNERS-07`, `CT-API-PET-TYPES-01` e `Limpeza:` da coleção do Postman.
+- **Por que não é bug:** `201` é a resposta adequada para "criado" e `204` para "alterado" ou "apagado" sem nada
+  a devolver, e o banco recebe a mudança certa. O defeito está na documentação, que não descreve o que a API faz.
+- **Efeito nos testes:** quem seguir o contrato e esperar `200` vai ver o teste falhar. Os testes conferem o
+  status que a API devolve e que é o correto; na fase 5, a validação de contrato deve apontar essa diferença.
 
 ## O que ficou de fora
 
