@@ -102,8 +102,9 @@ O banco permite todos os casos acima; nos dados atuais só aparecem os pets anti
 
 > Um item por bug: passos, esperado, obtido e evidência no banco. Link para o Jira ou para a issue oficial, se houver.
 
-Ambiente dos dois achados: `springcommunity/spring-petclinic-rest:latest` (4.0.2) com `postgres:16.3`, via
-`docker compose`. Ambos reproduzidos do zero (`docker compose down -v` e `up -d`); o BUG-02 de novo em 2026-11-13.
+Ambiente dos achados: `springcommunity/spring-petclinic-rest:latest` (4.0.2) com `postgres:16.3`, via
+`docker compose`. Todos reproduzidos do zero (`docker compose down -v` e `up -d`); o BUG-02 de novo em 2026-11-13
+e o BUG-03 em 2026-11-14.
 
 ### BUG-01 · API responde 500 em vez de 400 quando o id do dono não é numérico
 
@@ -153,6 +154,49 @@ Ambiente dos dois achados: `springcommunity/spring-petclinic-rest:latest` (4.0.2
   `CREATE INDEX IF NOT EXISTS owners_last_name_idx ON owners (last_name);`.
 - **Impacto:** baixo por reinício, mas acumula: cada cópia ocupa espaço e o banco atualiza todas a cada
   `INSERT` e `UPDATE` nessas tabelas. Um teste só de API não pegaria esse defeito.
+
+### BUG-03 · Apagar um dono apaga também o tipo do pet dele
+
+- **Passos:** `docker compose down -v` → `up -d --wait` → criar um dono (`POST /api/owners`), um tipo de pet
+  (`POST /api/pettypes`) e um pet desse tipo para o dono (`POST /api/owners/{ownerId}/pets`) → conferir no banco
+  as três linhas → `DELETE /api/owners/{ownerId}` → conferir no banco de novo.
+- **Esperado:** o tipo de pet continua no banco. Ele é um cadastro geral, não pertence ao dono. Sobre o pet, a regra
+  ainda está a confirmar (ver `CT-API-OWNERS-10`): ou a API recusa apagar dono com pet, ou apaga dono e pets juntos.
+  Em nenhuma das duas o tipo some.
+- **Obtido:** `204 No Content`, e somem do banco o dono, o pet **e o tipo**.
+
+  | Linha | Antes do DELETE | Depois do DELETE |
+  |:---|:---|:---|
+  | `owners` id 11 (Maria Souza) | existe | não existe |
+  | `pets` id 14 (Rex, `type_id` 7, `owner_id` 11) | existe | não existe |
+  | `types` id 7 (furão) | existe | **não existe** |
+
+- **Quando o tipo é usado por outro pet**, o defeito aparece de outro jeito: a API tenta apagar o tipo, o banco
+  recusa pela chave estrangeira e o dono **não pode ser apagado**. Reproduzido com um pet do tipo `cat` (id 1, do
+  `populateDB`, usado por outros pets): `DELETE /api/owners/12` devolve `404` com
+  `"title": "DataIntegrityViolationException"`, e dono, pet e tipo continuam no banco. O `404` também está errado
+  (o dono existe), e o corpo expõe o nome da exceção, como no BUG-01.
+- **Evidência no banco e no log:** as chaves estrangeiras de `pets` não têm `ON DELETE CASCADE` (`\d pets`), então
+  o banco não apaga nada sozinho: quem manda apagar o pet e o tipo é a API. No segundo cenário, o log da API mostra a
+  tentativa de apagar da tabela `types` ao receber o pedido de apagar um dono:
+
+  ```
+  ERROR: update or delete on table "types" violates foreign key constraint "pets_type_id_fkey" on table "pets"
+  Data integrity violation at DELETE /petclinic/api/owners/12
+  ```
+
+- **Causa (conferida na imagem):** nas classes de `/app/classes/org/springframework/samples/petclinic/model/`, o campo
+  `type` de `Pet` é `@ManyToOne(cascade = CascadeType.ALL)`, e o campo `pets` de `Owner` é
+  `@OneToMany(cascade = CascadeType.ALL)`. Ao apagar o dono, o Hibernate apaga os pets dele e, pela cascata do
+  `@ManyToOne`, apaga também o tipo de cada pet. O `DELETE /api/pets/{petId}` não passa por isso porque
+  `SpringDataPetRepositoryImpl` apaga com consultas diretas (`DELETE FROM Visit ...` e `DELETE FROM Pet ...`), que
+  ignoram as cascatas; por isso ali o tipo fica.
+- **Sugestão de correção:** tirar o `cascade` do campo `type` de `Pet` (deixar só `@ManyToOne`). Um tipo de pet é
+  cadastro compartilhado e não deve nascer nem morrer junto com um pet. Se apagar o dono apaga ou não os pets é a
+  regra a confirmar do `CT-API-OWNERS-10`.
+- **Impacto:** alto. Apagar um dono pode apagar um tipo de pet que outro cadastro usaria depois, e um dono com pet de
+  tipo comum (gato, cachorro) nunca pode ser apagado pela API. A resposta `204` parece sucesso: só o banco mostra o
+  tipo que sumiu.
 
 ### Observações
 
