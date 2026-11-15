@@ -104,10 +104,12 @@ O banco permite todos os casos acima; nos dados atuais só aparecem os pets anti
 
 Ambiente dos achados: `springcommunity/spring-petclinic-rest:latest` (4.0.2) com `postgres:16.3`, via
 `docker compose`. Todos reproduzidos do zero (`docker compose down -v` e `up -d`); o BUG-02 de novo em 2026-11-13
-e o BUG-03 em 2026-11-14.
+e o BUG-03 em 2026-11-14. Os três foram reproduzidos de novo em 2026-11-15 na `4.0.2` republicada em
+2026-11-14 (digest `sha256:daba846d…`).
 
 ### BUG-01 · API responde 500 em vez de 400 quando o id do dono não é numérico
 
+- **Issue:** [#1](https://github.com/Arckangelo/petclinic-sql-api/issues/1)
 - **Passos:** `curl -i http://localhost:9966/petclinic/api/owners/abc` (ou abrir o endereço no navegador).
   Pelo Swagger não reproduz, porque ele valida o campo antes de enviar.
 - **Esperado:** `400 Bad Request`, já que o erro é do cliente. O próprio contrato da API lista o 400 para esse endpoint.
@@ -118,6 +120,7 @@ e o BUG-03 em 2026-11-14.
 
 ### BUG-02 · Cada reinício da API cria mais uma cópia de 7 índices do banco
 
+- **Issue:** [#2](https://github.com/Arckangelo/petclinic-sql-api/issues/2)
 - **Passos:** `docker compose down -v` → `up -d --wait` → rodar `sql/11_duplicate_indexes.sql` →
   `docker compose restart api` e esperar ela ficar pronta → rodar a consulta de novo. Repetir o reinício.
 - **Esperado:** reiniciar a API não altera a estrutura do banco; a consulta continua sem linhas.
@@ -157,6 +160,7 @@ e o BUG-03 em 2026-11-14.
 
 ### BUG-03 · Apagar um dono apaga também o tipo do pet dele
 
+- **Issue:** [#3](https://github.com/Arckangelo/petclinic-sql-api/issues/3)
 - **Passos:** `docker compose down -v` → `up -d --wait` → criar um dono (`POST /api/owners`), um tipo de pet
   (`POST /api/pettypes`) e um pet desse tipo para o dono (`POST /api/owners/{ownerId}/pets`) → conferir no banco
   as três linhas → `DELETE /api/owners/{ownerId}` → conferir no banco de novo.
