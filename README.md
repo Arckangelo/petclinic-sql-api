@@ -22,9 +22,11 @@ docker compose down -v                                # derruba e apaga os dados
 Os dois serviços têm healthcheck: o banco com `pg_isready`, a API com `curl` no `/v3/api-docs`. A API só sobe
 depois do banco saudável, e o `--wait` só termina quando a API responde (cerca de 20 s).
 
-Um terceiro serviço, `db-index-cleanup`, roda uma vez depois que a API fica pronta e apaga as cópias de índice que
-ela cria a cada início (ver o aviso no BUG-02). Depois disso fica parado, sem consumo, e o healthcheck dele só fica
-saudável quando a limpeza termina sem erro. Se a limpeza falhar, o contêiner sai com erro e o `--wait` também falha.
+Um terceiro serviço, `db-index-cleanup`, sobe depois que a API fica pronta e, a cada 10 s, apaga as cópias de índice
+que ela cria a cada início (ver o aviso no BUG-02). Assim limpa sozinho depois de `docker compose up`,
+`docker compose restart` ou `docker compose restart api`. O healthcheck dele só fica saudável depois da primeira
+limpeza sem erro; se ela falhar, o `--wait` também falha. Para ver as cópias, pare o serviço:
+`docker compose stop db-index-cleanup` (e `docker compose start db-index-cleanup` para religar).
 
 Testes (ainda não existem):
 
@@ -90,7 +92,7 @@ também com dados ruins inseridos numa transação desfeita com `ROLLBACK`.
 | `08_specialties_unused.sql` | Especialidade que nenhum veterinário usa? | Nenhuma |
 | `09_users_password_not_bcrypt.sql` | Senha que não parece hash bcrypt? | Nenhuma; o único usuário (`admin`) tem hash `$2a$` de 60 caracteres |
 | `10_roles_unknown.sql` | Papel fora dos três que a API conhece? | Nenhum; os 3 papéis são do `admin` |
-| `11_duplicate_indexes.sql` | Índices duplicados? | Nenhum no banco novo; 7 a cada reinício da API (BUG-02), apagados pela limpeza automática no `docker compose up` |
+| `11_duplicate_indexes.sql` | Índices duplicados? | Nenhum no banco novo; 7 a cada reinício da API (BUG-02), apagados pela limpeza automática em até 10 s |
 | `12_owners_pets_visits_count.sql` | Quantos pets e visitas tem cada dono? | Todos os 10 têm pet (13 no total); Eduardo Rodriquez (3), Jean Coleman (6) e Carlos Estaban (10) têm 2; só a Jean tem visitas (as 4) |
 
 O banco permite todos os casos acima; nos dados atuais só aparecem os pets antigos e os vets sem especialidade.
@@ -126,14 +128,16 @@ e o BUG-03 em 2026-11-14. Os três foram reproduzidos de novo em 2026-11-15 na `
 ### BUG-02 · Cada reinício da API cria mais uma cópia de 7 índices do banco
 
 > **Aviso: a suíte roda com limpeza automática das cópias.** O serviço `db-index-cleanup` do `docker-compose.yml`
-> roda `sql/maintenance/drop_duplicate_indexes.sql` toda vez que o ambiente sobe (`docker compose up`), depois que a
-> API fica pronta, e apaga as cópias que ela criou. Serve só para o banco local não acumular índices desnecessários.
+> roda `sql/maintenance/drop_duplicate_indexes.sql` a cada 10 s e apaga as cópias que a API criou. Serve só para o
+> banco local não acumular índices desnecessários.
 > **O bug continua existindo:** a API segue criando as cópias a cada início, e a limpeza não corrige a causa.
-> Para reproduzir, use `docker compose restart api`, que reinicia só a API e não aciona a limpeza (passos abaixo).
+> Para reproduzir, pare a limpeza antes (`docker compose stop db-index-cleanup`), como nos passos abaixo; com ela
+> ligada, as cópias somem em até 10 s depois de cada reinício.
 
 - **Issue:** [#2](https://github.com/Arckangelo/petclinic-sql-api/issues/2)
-- **Passos:** `docker compose down -v` → `up -d --wait` → rodar `sql/11_duplicate_indexes.sql` →
-  `docker compose restart api` e esperar ela ficar pronta → rodar a consulta de novo. Repetir o reinício.
+- **Passos:** `docker compose down -v` → `up -d --wait` → `docker compose stop db-index-cleanup` → rodar
+  `sql/11_duplicate_indexes.sql` → `docker compose restart api` e esperar ela ficar pronta → rodar a consulta de
+  novo. Repetir o reinício. No fim, `docker compose start db-index-cleanup` apaga as cópias.
 - **Esperado:** reiniciar a API não altera a estrutura do banco; a consulta continua sem linhas.
 - **Obtido:** cada reinício cria mais uma cópia de 7 índices, em 6 tabelas. O crescimento não tem limite.
 

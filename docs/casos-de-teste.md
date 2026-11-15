@@ -1185,7 +1185,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Resultado esperado** | Passos 1 e 3: nenhuma linha (nenhum índice duplicado). |
 | **Resultado obtido** | Passo 1: nenhuma linha. Passo 3: 7 índices com 2 cópias em 6 tabelas (`owners`, `pets` ×2, `visits`, `types`, `vets`, `specialties`); cada novo reinício soma mais uma cópia (README, achados). |
 | **Status** | Não executado |
-| **Observações** | Reproduzido à mão em 2026-11-13; o teste ainda não existe. Chaves primárias e regras `UNIQUE` não duplicam. Um teste só de API não pega esse defeito. O reinício do passo 2 tem que ser `docker compose restart api`: um `docker compose up` aciona a limpeza automática (`db-index-cleanup`) e apaga as cópias antes do passo 3. |
+| **Observações** | Reproduzido à mão em 2026-11-13; o teste ainda não existe. Chaves primárias e regras `UNIQUE` não duplicam. Um teste só de API não pega esse defeito. A limpeza automática (`db-index-cleanup`) apaga as cópias a cada 10 s: o teste precisa pará-la antes do passo 2 (`docker compose stop db-index-cleanup`) e religá-la no teardown (`docker compose start db-index-cleanup`). |
 
 ### tests/api/known_bugs/test_owner_delete.py
 
