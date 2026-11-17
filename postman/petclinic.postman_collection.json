@@ -3,9 +3,7 @@
     "_postman_id": "aea4e900-90ad-4f28-bb67-c78088455d68",
     "name": "petclinic",
     "description": "#### Testes de API do [Spring PetClinic REST](https://github.com/spring-petclinic/spring-petclinic-rest), rodando localmente com PostgreSQL pelo `docker compose`.\n\n**Como rodar**\n\n- Suba o ambiente: `docker compose up -d --wait`.\n    \n- Use o environment `local` (`baseUrl` = `http://localhost:9966/petclinic/api`).\n    \n- Rode a coleção inteira, na ordem, pelo Runner ou pelo Newman: `npx newman run postman/petclinic.postman_collection.json -e postman/local.postman_environment.json`.\n    \n\n**Como está organizada**\n\n- Os requests passam ids entre si por variáveis da coleção, por isso a ordem importa.\n    \n- Cada request de teste confere status, corpo e tempo de resposta. O valor esperado vem do que foi enviado, nunca da própria resposta.\n    \n- Os requests `Limpeza:` no fim apagam só os dados criados pelo fluxo e aceitam \"já removido\" (204 ou 404).\n    \n- O nome de cada request leva o ID do caso (`CT-API-...`), o mesmo de `docs/casos-de-teste.md`.\n    \n\n[Learn more about Postman Collections.](https://learning.postman.com/docs/collections/collections-overview/)",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "_exporter_id": "60190256",
-    "_collection_link": "https://go.postman.co/collection/60190256-aea4e900-90ad-4f28-bb67-c78088455d68?source=collection_link"
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
     {
@@ -24,6 +22,9 @@
               }
             }
           ],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
           "request": {
             "method": "POST",
             "header": [],
@@ -70,6 +71,9 @@
               }
             }
           ],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
           "request": {
             "method": "POST",
             "header": [],
@@ -107,6 +111,9 @@
               }
             }
           ],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
           "request": {
             "method": "POST",
             "header": [],
@@ -170,7 +177,188 @@
           "response": []
         },
         {
-          "name": "Limpeza: CT-API-OWNERS-01",
+          "name": "CT-API-PET-TYPES-01",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const sent = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));\nconst body = pm.response.json();\n\n// Troque XXX pelo status que a API devolveu quando você rodou (o contrato diz 200)\npm.test(\"status 201\", () => pm.response.to.have.status(201));\n\npm.test(\"nome igual ao enviado\", () => {\n  pm.expect(body.name).to.eql(sent.name);\n});\n\npm.test(\"id gerado é um número\", () => {\n  pm.expect(body.id).to.be.a(\"number\");\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// Usados pelo CT-API-PETS-01 e pela limpeza\npm.collectionVariables.set(\"petTypeId\", body.id);\npm.collectionVariables.set(\"petTypeName\", sent.name);\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"furão\"\n}\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/pettypes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pettypes"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "CT-API-PETS-01",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const sent = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));\nconst body = pm.response.json();\n\npm.test(\"status 201\", () => pm.response.to.have.status(201));\n\npm.test(\"nome e nascimento iguais aos enviados\", () => {\n  pm.expect(body.name, \"name\").to.eql(sent.name);\n  pm.expect(body.birthDate, \"birthDate\").to.eql(sent.birthDate);\n});\n\npm.test(\"tipo é o que foi criado no CT-API-PET-TYPES-01\", () => {\n  pm.expect(String(body.type.id)).to.eql(String(sent.type.id));\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// Usado pela limpeza\npm.collectionVariables.set(\"petId\", body.id);\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Rex\",\n  \"birthDate\": \"2020-05-10\",\n  \"type\": {\n    \"id\": {{petTypeId}},\n    \"name\": \"{{petTypeName}}\"\n  }\n}\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/owners/{{ownerId}}/pets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners",
+                "{{ownerId}}",
+                "pets"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Visits",
+      "item": [
+        {
+          "name": "CT-API-VISITS-01",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const sent = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));\nconst body = pm.response.json();\n\npm.test(\"status 201\", () => pm.response.to.have.status(201));\n\npm.test(\"data e descrição iguais às enviadas\", () => {\n  pm.expect(body.date, \"date\").to.eql(sent.date);\n  pm.expect(body.description, \"description\").to.eql(sent.description);\n});\n\npm.test(\"visita ligada ao pet do CT-API-PETS-01\", () => {\n  pm.expect(String(body.petId)).to.eql(String(pm.collectionVariables.get(\"petId\")));\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// Usado pela limpeza\npm.collectionVariables.set(\"visitId\", body.id);\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2026-11-01\",\n  \"description\": \"Consulta de rotina\"\n}\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/owners/{{ownerId}}/pets/{{petId}}/visits",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners",
+                "{{ownerId}}",
+                "pets",
+                "{{petId}}",
+                "visits"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Limpeza",
+      "item": [
+        {
+          "name": "Limpeza: CT-API-VISITS-01",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/visits/{{visitId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "visits",
+                "{{visitId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Limpeza: CT-API-PETS-01",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/pets/{{petId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pets",
+                "{{petId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Limpeza: CT-API-PET-TYPES-01",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/pettypes/{{petTypeId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pettypes",
+                "{{petTypeId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Limpeza: CT-API-OWNERS-13b",
           "event": [
             {
               "listen": "test",
@@ -185,23 +373,14 @@
           "request": {
             "method": "DELETE",
             "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
             "url": {
-              "raw": "{{baseUrl}}/owners/{{ownerId}}",
+              "raw": "{{baseUrl}}/owners/{{missingIdOwnerId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "owners",
-                "{{ownerId}}"
+                "{{missingIdOwnerId}}"
               ]
             }
           },
@@ -246,7 +425,7 @@
           "response": []
         },
         {
-          "name": "Limpeza: CT-API-OWNERS-13b",
+          "name": "Limpeza: CT-API-OWNERS-01",
           "event": [
             {
               "listen": "test",
@@ -261,14 +440,23 @@
           "request": {
             "method": "DELETE",
             "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
             "url": {
-              "raw": "{{baseUrl}}/owners/{{missingIdOwnerId}}",
+              "raw": "{{baseUrl}}/owners/{{ownerId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "owners",
-                "{{missingIdOwnerId}}"
+                "{{ownerId}}"
               ]
             }
           },
@@ -292,6 +480,22 @@
     },
     {
       "key": "existingIdOwnerId",
+      "value": ""
+    },
+    {
+      "key": "petTypeId",
+      "value": ""
+    },
+    {
+      "key": "petTypeName",
+      "value": ""
+    },
+    {
+      "key": "petId",
+      "value": ""
+    },
+    {
+      "key": "visitId",
       "value": ""
     }
   ]
