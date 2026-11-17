@@ -1,6 +1,6 @@
 # Casos de teste — petclinic-sql-api
 
-Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um por teste a automatizar, identificados pelo ID CT que vai no comentário acima do teste no código. Os arquivos de cada seção são os previstos em `tests/api/`; nenhum existe ainda. Total: 78 casos.
+Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um por teste a automatizar, identificados pelo ID CT que vai no comentário acima do teste no código. Os arquivos de cada seção são os previstos em `tests/api/`; nenhum existe ainda. Total: 79 casos.
 
 **Notas gerais**
 
@@ -28,7 +28,8 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | Bugs conhecidos | [tests/api/known_bugs/test_http_status.py](#testsapiknown_bugstest_http_statuspy) | 1 |
 | Bugs conhecidos | [tests/api/known_bugs/test_schema_indexes.py](#testsapiknown_bugstest_schema_indexespy) | 1 |
 | Bugs conhecidos | [tests/api/known_bugs/test_owner_delete.py](#testsapiknown_bugstest_owner_deletepy) | 2 |
-| **Total** | | **78** |
+| Bugs conhecidos | [tests/api/known_bugs/test_visit_create.py](#testsapiknown_bugstest_visit_createpy) | 1 |
+| **Total** | | **79** |
 
 ## API
 
@@ -1223,3 +1224,21 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Status** | Não executado |
 | **Observações** | Reproduzido do zero em 2026-11-14 com o tipo `cat` do `populateDB`; o teste deve criar o próprio tipo compartilhado. Teardown: pets, depois donos, depois tipo; cada remoção aceita "já removido". |
 
+### tests/api/known_bugs/test_visit_create.py
+
+#### CT-BUGS-VISIT-CREATE-01 — [BUG-04] Criar visita com id no corpo não altera uma visita existente
+
+| Campo | Descrição |
+|---|---|
+| **Módulo / Área** | Bugs conhecidos › API › Visitas › Criação |
+| **Tipo de teste** | Funcional – efeito no servidor |
+| **Prioridade** | Alta |
+| **Bug relacionado** | BUG-04 |
+| **Objetivo** | Garantir que o POST de visita sempre cria uma visita nova e nunca grava por cima de outra. |
+| **Pré-condições** | Dono, tipo e dois pets criados via API; uma visita criada para o primeiro pet (a "visita existente"). |
+| **Dados de teste** | Visita com o `id` da visita existente, outra data, outra descrição e o `petId` do segundo pet. |
+| **Passos** | 1. Guardar do banco a linha da visita existente e a contagem de `visits`.<br>2. Enviar POST /api/visits com o id da visita existente.<br>3. Verificar a resposta.<br>4. Conferir no banco a visita existente e a contagem de `visits`. |
+| **Resultado esperado** | Passo 3: 201 com id diferente do enviado, ou 400.<br>Passo 4: a visita existente tem os mesmos pet_id, visit_date e description do passo 1; se a resposta foi 201, a contagem aumentou em 1. |
+| **Resultado obtido** | Passo 3: status 201 com o mesmo id enviado. Passo 4: a visita existente mudou de pet, data e descrição; a contagem não mudou (BUGS.md). |
+| **Status** | Não executado |
+| **Observações** | Reproduzido do zero em 2026-11-17 com a visita 1 do `populateDB`; o teste deve criar a própria visita existente, sem depender do `populateDB`. É o par do CT-API-OWNERS-13a, em que o POST de dono ignora o id enviado. Teardown: visitas, depois pets, dono e tipo; cada remoção aceita "já removido". |

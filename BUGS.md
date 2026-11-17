@@ -5,13 +5,15 @@ detalhes de cada um: passos, esperado, obtido, evidência no banco e, quando con
 
 Ambiente: `springcommunity/spring-petclinic-rest:latest` (4.0.2) com `postgres:16.3`, via `docker compose`. Todos
 reproduzidos do zero (`docker compose down -v` e `up -d --wait`). BUG-01, BUG-02 e BUG-03 foram reproduzidos de novo
-em 2026-11-15 na `4.0.2` republicada em 2026-11-14 (digest `sha256:daba846d…`).
+em 2026-11-15 na `4.0.2` republicada em 2026-11-14 (digest `sha256:daba846d…`); o BUG-04 foi reproduzido nela em
+2026-11-17.
 
 | Bug | Resumo | Impacto | Issue |
 |:---|:---|:---|:---|
 | [BUG-01](#bug-01--api-responde-500-em-vez-de-400-quando-o-id-do-dono-não-é-numérico) | Id de dono não numérico responde 500 em vez de 400 | médio | [#1](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/1) |
 | [BUG-02](#bug-02--cada-reinício-da-api-cria-mais-uma-cópia-de-7-índices-do-banco) | Cada reinício da API duplica 7 índices | baixo, acumula | [#2](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/2) |
 | [BUG-03](#bug-03--apagar-um-dono-apaga-também-o-tipo-do-pet-dele) | Apagar dono apaga também o tipo do pet | alto | [#3](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/3) |
+| [BUG-04](#bug-04--criar-visita-com-id-no-corpo-sobrescreve-uma-visita-que-já-existe) | POST de visita com `id` sobrescreve visita existente | alto | [#4](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/4) |
 
 ## BUG-01 · API responde 500 em vez de 400 quando o id do dono não é numérico
 
@@ -116,6 +118,32 @@ em 2026-11-15 na `4.0.2` republicada em 2026-11-14 (digest `sha256:daba846d…`)
   tipo comum (gato, cachorro) nunca pode ser apagado pela API. A resposta `204` parece sucesso: só o banco mostra o
   tipo que sumiu.
 
+## BUG-04 · Criar visita com `id` no corpo sobrescreve uma visita que já existe
+
+- **Passos:** `docker compose down -v` → `up -d --wait` → criar um dono, um tipo e um pet → conferir no banco a
+  visita 1 (do `populateDB`) → `POST /api/visits` com `"id": 1`, uma data, uma descrição e o `petId` do pet novo →
+  conferir a visita 1 de novo.
+- **Esperado:** o POST cria uma visita nova, com id gerado pelo banco, e ignora o `id` enviado (como faz o
+  `POST /api/owners`, ver `CT-API-OWNERS-13a`), ou recusa o pedido com 400. A visita 1 continua igual.
+- **Obtido:** `201 Created` com `"id": 1` no corpo da resposta, e a visita 1 é trocada pelos dados enviados. Nenhuma
+  visita nova é criada.
+
+  | `visits` id 1 | pet_id | visit_date | description |
+  |:---|:---|:---|:---|
+  | Antes do POST | 7 (Samantha) | 2010-03-04 | rabies shot |
+  | Depois do POST | 14 (pet novo) | 2026-11-02 | Visita com id 1 |
+
+  Total de visitas: 4 antes e 4 depois. A vacina da Samantha mudou de pet, e a data e a descrição originais se
+  perderam.
+- **Efeito em cascata:** a visita passa a pertencer ao pet novo. Ao apagar esse pet, a API apaga as visitas dele, e
+  a visita 1 some do banco. Foi assim que o defeito apareceu: uma limpeza de teste apagou um dado do `populateDB`.
+- **Evidência no banco:** a consulta da visita 1 antes e depois do POST (tabela acima). Reproduzido do zero em
+  2026-11-17, na imagem `4.0.2` (digest `sha256:daba846d…`).
+- **Relação com o contrato:** o schema `Visit`, usado no corpo do `POST /api/visits`, marca o `id` como obrigatório.
+  Para uma criação isso não faz sentido, e a API usa esse id para gravar por cima de uma visita existente.
+- **Impacto:** alto. Qualquer cliente que envie o `id` (por engano, ou copiando a resposta de outra visita) apaga o
+  histórico de outro pet sem nenhum aviso, com uma resposta que parece sucesso. Só o banco mostra a troca.
+
 ## Observações
 
 Diferenças que não quebram o funcionamento, mas ficam registradas para a fase 5 (contrato).
@@ -130,6 +158,7 @@ Diferenças que não quebram o funcionamento, mas ficam registradas para a fase 
 | `POST /api/pettypes` | `200` | `201 Created` |
 | `DELETE /api/pettypes/{petTypeId}` | `200` | `204 No Content` |
 | `DELETE /api/visits/{visitId}` | `200` | `204 No Content` |
+| `POST /api/visits` | `200` | `201 Created` |
 
 - **Como foi conferido:** em 2026-11-14, com dados criados só para isso e apagados em seguida, e pelos testes
   `CT-API-OWNERS-07`, `CT-API-PET-TYPES-01` e `Limpeza:` da coleção do Postman.
