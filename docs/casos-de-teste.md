@@ -12,7 +12,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 - Onde o banco **não** garante uma regra (seção "Fora do banco" do dicionário), o esperado é a API recusar com 4xx e não gravar nada. Quando a regra não está no contrato da API (OpenAPI) e é uma suposição, as Observações dizem "regra a confirmar".
 - Recusa esperada é sempre 4xx. Um 500 reprova o caso, mesmo que o banco fique intacto.
 - Limites de tamanho e formato citados como "contrato" vêm do OpenAPI da imagem `springcommunity/spring-petclinic-rest` 4.0.2 (`/petclinic/v3/api-docs`).
-- Status "Não executado": o teste ainda não existe. Nos bugs conhecidos, o esperado é o comportamento correto e o obtido é o reproduzido à mão e registrado no README.
+- Status "Não executado": o teste ainda não existe. Nos bugs conhecidos, o esperado é o comportamento correto e o obtido é o reproduzido à mão e registrado em `BUGS.md`.
 
 ## Índice
 
@@ -1164,7 +1164,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Dados de teste** | ownerId = `abc`. |
 | **Passos** | 1. Enviar GET /api/owners/abc.<br>2. Verificar o status e o corpo. |
 | **Resultado esperado** | Status 400 (listado no contrato do endpoint), sem o nome de exceção Java no corpo. |
-| **Resultado obtido** | Status 500, com `"title": "MethodArgumentTypeMismatchException"` no corpo (README, achados). |
+| **Resultado obtido** | Status 500, com `"title": "MethodArgumentTypeMismatchException"` no corpo (BUGS.md). |
 | **Status** | Não executado |
 | **Observações** | Reproduzido à mão; o teste ainda não existe. O erro acontece antes de qualquer consulta, então o banco não muda. |
 
@@ -1183,7 +1183,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Dados de teste** | Nenhum. |
 | **Passos** | 1. Rodar a consulta de índices duplicados (`sql/11_duplicate_indexes.sql`).<br>2. Reiniciar o serviço da API e esperar o healthcheck ficar saudável.<br>3. Rodar a consulta de novo. |
 | **Resultado esperado** | Passos 1 e 3: nenhuma linha (nenhum índice duplicado). |
-| **Resultado obtido** | Passo 1: nenhuma linha. Passo 3: 7 índices com 2 cópias em 6 tabelas (`owners`, `pets` ×2, `visits`, `types`, `vets`, `specialties`); cada novo reinício soma mais uma cópia (README, achados). |
+| **Resultado obtido** | Passo 1: nenhuma linha. Passo 3: 7 índices com 2 cópias em 6 tabelas (`owners`, `pets` ×2, `visits`, `types`, `vets`, `specialties`); cada novo reinício soma mais uma cópia (BUGS.md). |
 | **Status** | Não executado |
 | **Observações** | Reproduzido à mão em 2026-11-13; o teste ainda não existe. Chaves primárias e regras `UNIQUE` não duplicam. Um teste só de API não pega esse defeito. A limpeza automática (`db-index-cleanup`) apaga as cópias a cada 10 s: o teste precisa pará-la antes do passo 2 (`docker compose stop db-index-cleanup`) e religá-la no teardown (`docker compose start db-index-cleanup`). |
 
@@ -1202,7 +1202,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Dados de teste** | Dono padrão, tipo com nome único por execução, pet padrão desse tipo. |
 | **Passos** | 1. Conferir no banco que dono, pet e tipo existem.<br>2. Enviar DELETE /api/owners/{ownerId}.<br>3. Conferir no banco a linha do tipo. |
 | **Resultado esperado** | Passo 3: a linha do tipo continua em `types`, com o mesmo nome. Sobre dono e pet, vale a regra do CT-API-OWNERS-10. |
-| **Resultado obtido** | Passo 2: status 204. Passo 3: o tipo não existe mais em `types`; dono e pet também sumiram (README, achados). |
+| **Resultado obtido** | Passo 2: status 204. Passo 3: o tipo não existe mais em `types`; dono e pet também sumiram (BUGS.md). |
 | **Status** | Não executado |
 | **Observações** | Reproduzido à mão do zero em 2026-11-14; o teste ainda não existe. As chaves estrangeiras de `pets` não têm `ON DELETE CASCADE`, então quem apaga o tipo é a API. `DELETE /api/pets/{petId}` não apaga o tipo. Teardown: tipo, se ainda existir; cada remoção aceita "já removido". |
 
@@ -1219,6 +1219,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Dados de teste** | Dois donos padrão, um tipo com nome único por execução, um pet desse tipo para cada dono. |
 | **Passos** | 1. Enviar DELETE /api/owners/{id do primeiro dono}.<br>2. Verificar o status e o corpo.<br>3. Conferir no banco os dois donos, os dois pets e o tipo. |
 | **Resultado esperado** | Passo 2: nunca 404 (o dono existe) nem nome de exceção Java no corpo; 409 se a regra for recusar, 2xx se for apagar dono e pets juntos (CT-API-OWNERS-10).<br>Passo 3: o tipo e o segundo dono com o pet dele continuam no banco, sem alteração; sem remoção pela metade. |
-| **Resultado obtido** | Passo 2: status 404 com `"title": "DataIntegrityViolationException"`. Passo 3: nada foi apagado; o log da API mostra a tentativa de apagar o tipo, barrada pela chave `pets_type_id_fkey` (README, achados). |
+| **Resultado obtido** | Passo 2: status 404 com `"title": "DataIntegrityViolationException"`. Passo 3: nada foi apagado; o log da API mostra a tentativa de apagar o tipo, barrada pela chave `pets_type_id_fkey` (BUGS.md). |
 | **Status** | Não executado |
 | **Observações** | Reproduzido do zero em 2026-11-14 com o tipo `cat` do `populateDB`; o teste deve criar o próprio tipo compartilhado. Teardown: pets, depois donos, depois tipo; cada remoção aceita "já removido". |
+

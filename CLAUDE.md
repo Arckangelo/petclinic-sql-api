@@ -7,7 +7,7 @@ PostgreSQL. O banco é o oráculo: o teste chama a API e confere o efeito direto
 Estrutura: `sql/` (consultas exploratórias de integridade), `docs/` (dicionário de dados), `postman/`
 (coleção e environment do Newman), `tests/api` (pytest com banco como oráculo), `tests/contract`
 (validação contra o OpenAPI da aplicação), `tests/bdd` (Gherkin e pytest-bdd), `k6/` (carga leve),
-`.github/workflows/` (CI). Detalhes e decisões em `README.md`.
+`.github/workflows/` (CI). Detalhes e decisões em `README.md`; bugs e observações em `BUGS.md`.
 
 As regras estão em ordem de prioridade. **P1** nunca se quebra; **P2** vale em toda mudança; **P3** é
 para quando o assunto aparecer.
@@ -33,7 +33,8 @@ para quando o assunto aparecer.
    do CI). Nunca para um servidor de terceiros.
 7. **Bug novo, antes do commit:**
    - reproduza do zero (`docker compose down -v` e `up`) para descartar dado sujo;
-   - registre no README, na seção de achados, com passos, esperado, obtido e a evidência no banco;
+   - registre no `BUGS.md`, com passos, esperado, obtido e a evidência no banco, e acrescente uma linha
+     no resumo da seção de achados do README;
    - deixe um teste que falha pela asserção do bug, com `[BUG-NN]` no nome;
    - Jira e issue no repositório oficial só quando a pessoa pedir; antes da issue, confira se já
      existe e reproduza na versão mais recente da imagem.
@@ -67,8 +68,8 @@ para quando o assunto aparecer.
 
 14. **Escopo:** as fases 1 a 4 (ambiente, SQL, Postman, pytest) são o núcleo. Não adiante as fases 5 a
     8 (contrato, BDD, Jira, k6) sem a pessoa pedir.
-15. **Documentação enxuta:** um README com as decisões e o porquê de cada uma. Não crie outros `.md` sem
-    pedido.
+15. **Documentação enxuta:** um README com as decisões e o porquê de cada uma, e o `BUGS.md` com o
+    detalhe de cada bug e observação. Não crie outros `.md` sem pedido.
 16. **k6:** carga leve (poucos usuários virtuais, pouco tempo), só contra o ambiente local.
 17. **Commits e PRs:** em português, explicando o porquê; o PR traz a validação feita.
 
