@@ -336,7 +336,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Passos** | 1. Para cada data, enviar POST /api/owners/{ownerId}/pets.<br>2. Verificar a resposta e o banco. |
 | **Resultado esperado** | Hoje: status 201 e data gravada igual.<br>Amanhã e 2099-01-01: status 400 e nenhum pet novo. |
 | **Status** | Não executado |
-| **Observações** | Dicionário: o banco aceita 2099-01-01.<br>Regra a confirmar: o contrato não limita a data. |
+| **Observações** | Dicionário: o banco aceita 2099-01-01.<br>O contrato não limita a data, mas a API aplica a regra e responde `Birth date cannot be in the future` (confirmado em 2026-11-18). A API usa UTC, então "hoje" e "amanhã" são calculados nesse fuso.<br>Na coleção do Postman: `CT-API-PETS-05a`, `05b` e `05c`. |
 
 #### CT-API-PETS-06 — Data de nascimento muito antiga
 
