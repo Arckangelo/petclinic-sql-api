@@ -1,6 +1,6 @@
 # Casos de teste — petclinic-sql-api
 
-Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um por teste a automatizar, identificados pelo ID CT que vai no comentário acima do teste no código. Os arquivos de cada seção são os previstos em `tests/api/`; nenhum existe ainda. A exceção é a seção Postman, que já roda na coleção. Total: 86 casos.
+Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um por teste a automatizar, identificados pelo ID CT que vai no comentário acima do teste no código. Os arquivos de cada seção são os previstos em `tests/api/`; nenhum existe ainda. A exceção é a seção Postman, que já roda na coleção. Total: 87 casos.
 
 **Notas gerais**
 
@@ -34,7 +34,8 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | Bugs conhecidos | [tests/api/known_bugs/test_pet_name.py](#testsapiknown_bugstest_pet_namepy) | 1 |
 | Bugs conhecidos | [tests/api/known_bugs/test_pet_type_delete.py](#testsapiknown_bugstest_pet_type_deletepy) | 1 |
 | Bugs conhecidos | [tests/api/known_bugs/test_request_body.py](#testsapiknown_bugstest_request_bodypy) | 1 |
-| **Total** | | **86** |
+| Bugs conhecidos | [tests/api/known_bugs/test_path_id.py](#testsapiknown_bugstest_path_idpy) | 1 |
+| **Total** | | **87** |
 
 ## API
 
@@ -382,7 +383,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Passos** | 1. Contar as linhas de `pets`.<br>2. Enviar POST /api/owners/{ownerId inexistente}/pets.<br>3. Verificar a resposta e contar de novo. |
 | **Resultado esperado** | Status 404 e mesma contagem. |
 | **Status** | Não executado |
-| **Observações** | Dicionário: a chave `pets_owner_id_fkey` recusa no banco; a API precisa barrar antes, sem 500. |
+| **Observações** | Dicionário: a chave `pets_owner_id_fkey` recusa no banco; a API precisa barrar antes, sem 500.<br>Vale para id que respeita o contrato. Id negativo responde 500: é o BUG-09 (CT-BUGS-PATH-ID-01). |
 
 #### CT-API-PETS-09 — Criar pet com tipo inexistente
 
@@ -1371,3 +1372,21 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Resultado obtido** | Passo 3: status 500 com `HttpMessageNotReadableException`. Passo 4: contagens iguais (BUGS.md). |
 | **Status** | Não executado |
 | **Observações** | Reproduzido do zero em 2026-11-18. Um caso parametrizado por pedido (`pytest.mark.parametrize`). Teardown: dono e tipo; cada remoção aceita "já removido". |
+
+### tests/api/known_bugs/test_path_id.py
+
+#### CT-BUGS-PATH-ID-01 — [BUG-09] Id negativo na URL responde 400
+
+| Campo | Descrição |
+|---|---|
+| **Módulo / Área** | Bugs conhecidos › API › Tratamento de erros |
+| **Tipo de teste** | Contrato – status HTTP |
+| **Prioridade** | Média |
+| **Bug relacionado** | BUG-09 |
+| **Objetivo** | Garantir que um id abaixo do mínimo do contrato é tratado como erro do cliente, sem expor detalhes internos. |
+| **Dados de teste** | Id `-1` nas 22 operações que recebem id na URL; corpo válido em `POST` e `PUT`. |
+| **Passos** | 1. Contar as linhas de `owners`, `pets`, `types`, `visits`, `vets` e `specialties`.<br>2. Enviar cada pedido.<br>3. Verificar cada resposta.<br>4. Contar as linhas de novo. |
+| **Resultado esperado** | Passo 3: status 400 em todos, sem nome de exceção Java no corpo.<br>Passo 4: mesmas contagens do passo 1. |
+| **Resultado obtido** | Passo 3: status 500 com `ConstraintViolationException`. Passo 4: contagens iguais (BUGS.md). |
+| **Status** | Não executado |
+| **Observações** | Reproduzido do zero em 2026-11-18. Um caso parametrizado por operação (`pytest.mark.parametrize`). Não cria dados, então não precisa de limpeza. |

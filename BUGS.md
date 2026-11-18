@@ -6,7 +6,7 @@ detalhes de cada um: passos, esperado, obtido, evidência no banco e, quando con
 Ambiente: `springcommunity/spring-petclinic-rest:latest` (4.0.2) com `postgres:16.3`, via `docker compose`. Todos
 reproduzidos do zero (`docker compose down -v` e `up -d --wait`). BUG-01, BUG-02 e BUG-03 foram reproduzidos de novo
 em 2026-11-15 na `4.0.2` republicada em 2026-11-14 (digest `sha256:daba846d…`); o BUG-04 foi reproduzido nela em
-2026-11-17, e o BUG-05, o BUG-06, o BUG-07 e o BUG-08, em 2026-11-18.
+2026-11-17, e o BUG-05, o BUG-06, o BUG-07, o BUG-08 e o BUG-09, em 2026-11-18.
 
 | Bug | Resumo | Impacto | Issue |
 |:---|:---|:---|:---|
@@ -18,6 +18,7 @@ em 2026-11-15 na `4.0.2` republicada em 2026-11-14 (digest `sha256:daba846d…`)
 | [BUG-06](#bug-06--nome-de-pet-só-com-espaços-é-aceito-e-gravado) | Nome de pet só com espaços é aceito e gravado | baixo a médio | [#6](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/6) |
 | [BUG-07](#bug-07--apagar-um-tipo-de-pet-apaga-todos-os-pets-desse-tipo-e-as-visitas-deles) | Apagar tipo apaga todos os pets desse tipo e as visitas deles | alto | [#7](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/7) |
 | [BUG-08](#bug-08--corpo-ilegível-responde-500-em-vez-de-400) | Corpo ilegível responde 500 em vez de 400 | médio | [#8](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/8) |
+| [BUG-09](#bug-09--id-negativo-na-url-responde-500-em-vez-de-400) | Id negativo na URL responde 500 em vez de 400 | médio | [#9](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/9) |
 
 ## BUG-01 · API responde 500 em vez de 400 quando o id do dono não é numérico
 
@@ -253,6 +254,38 @@ em 2026-11-15 na `4.0.2` republicada em 2026-11-14 (digest `sha256:daba846d…`)
   de integridade e erros gerais, mas não trata corpo ilegível; por isso o erro cai no tratamento geral e vira `500`.
 - **Impacto:** médio. Nenhum dado é afetado, mas um erro do cliente aparece como falha do servidor: quem chama a API
   não sabe o que corrigir, o monitoramento recebe alarmes falsos e o nome da exceção fica exposto, como no BUG-01.
+
+## BUG-09 · Id negativo na URL responde 500 em vez de 400
+
+- **Issue:** [#9](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/9)
+- **Passos:** `docker compose down -v` → `up -d --wait` → contar as linhas de `owners`, `pets`, `types`, `visits`,
+  `vets` e `specialties` → `GET /api/owners/-1` → `POST /api/owners/-1/pets` com um pet válido → repetir com `-1` nas
+  demais operações que recebem id na URL, com corpo válido em `POST` e `PUT` → contar as linhas de novo.
+- **Esperado:** `400 Bad Request`, indicando o parâmetro inválido. O contrato define o mínimo `0` para esses ids e
+  lista o `400` como resposta.
+- **Obtido:** `500`, com `"title": "ConstraintViolationException"`, `"detail": "An unexpected error occurred while
+  processing your request"` e a lista de erros de validação vazia.
+
+  | Operações com id `-1` | Quantidade | Resposta |
+  |:---|:---:|:---|
+  | `GET /api/{owners, pets, pettypes, visits, vets, specialties}/-1` | 6 | `500` |
+  | `PUT /api/{owners, pets, pettypes, visits, vets, specialties}/-1` | 6 | `500` |
+  | `DELETE /api/{owners, pets, pettypes, visits, vets, specialties}/-1` | 6 | `500` |
+  | `POST /api/owners/-1/pets` | 1 | `500` |
+  | `GET` e `PUT /api/owners/-1/pets/-1` | 2 | `500` |
+  | `POST /api/owners/-1/pets/-1/visits` | 1 | `500` |
+
+  Com id `0`, que o contrato aceita, as mesmas 22 operações respondem `404`.
+
+- **Evidência no banco:** `owners`, `pets`, `types`, `visits`, `vets` e `specialties` têm 10, 13, 6, 4, 6 e 3 linhas
+  antes e depois dos pedidos. Reproduzido do zero em 2026-11-18, na imagem `4.0.2` (digest `sha256:daba846d…`).
+- **Causa:** o log mostra `jakarta.validation.ConstraintViolationException`, por exemplo `getOwner.ownerId: must be
+  greater than or equal to 0`. A validação funciona, mas a classe `ExceptionControllerAdvice` da imagem só trata
+  `MethodArgumentNotValidException`, `DataIntegrityViolationException` e erros gerais; por isso a exceção cai no
+  tratamento geral e vira `500`.
+- **Impacto:** médio. Nenhum dado é afetado, mas um erro do cliente aparece como falha do servidor em toda a API: quem
+  chama não sabe o que corrigir, o monitoramento recebe alarmes falsos e o nome da exceção fica exposto, como no BUG-01
+  e no BUG-08.
 
 ## Observações
 
