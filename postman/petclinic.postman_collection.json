@@ -1096,6 +1096,100 @@
           "response": []
         },
         {
+          "name": "CT-API-OWNERS-08a",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Foto do dono antes do PUT, para comparar depois\nconst url = pm.environment.get(\"baseUrl\") + \"/owners/\" + pm.collectionVariables.get(\"ownerId\");\npm.sendRequest(url, (err, res) => {\n  if (err) throw err;\n  if (res.code !== 200) {\n    throw new Error(\"Dono \" + pm.collectionVariables.get(\"ownerId\") + \" não existe (status \" + res.code + \"). Rode o CT-API-OWNERS-01 antes.\");\n  }\n  pm.collectionVariables.set(\"ownerBefore\", JSON.stringify(res.json()));\n});\n"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const sent = JSON.parse(pm.request.body.raw);\nconst ownerId = pm.collectionVariables.get(\"ownerId\");\nconst before = JSON.parse(pm.collectionVariables.get(\"ownerBefore\"));\n\npm.test(\"status 400\", () => pm.response.to.have.status(400));\n\n// O 400 tem de ser pelo telefone, não por outro campo\npm.test(\"erro aponta o campo telephone com o valor enviado\", () => {\n  const errors = pm.response.json().schemaValidationErrors;\n  pm.expect(errors, \"lista de erros de validação\").to.be.an(\"array\").and.not.empty;\n  errors.forEach((e) => {\n    pm.expect(e.field).to.eql(\"telephone\");\n    pm.expect(e.rejectedValue).to.eql(sent.telephone);\n  });\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// O dono não pode ter mudado, nem no endereço enviado junto\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/owners/\" + ownerId, (err, res) => {\n  pm.test(\"dono continua igual ao de antes do PUT\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(200);\n    pm.expect(res.json()).to.eql(before);\n  });\n});\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"firstName\": \"Maria\",\n    \"lastName\": \"Souza\",\n    \"address\": \"Rua Alterada, 1\",\n    \"city\": \"Recife\",\n    \"telephone\": \"abc\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/owners/{{ownerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners",
+                "{{ownerId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "CT-API-OWNERS-08b",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Foto do dono antes do PUT, para comparar depois\nconst url = pm.environment.get(\"baseUrl\") + \"/owners/\" + pm.collectionVariables.get(\"ownerId\");\npm.sendRequest(url, (err, res) => {\n  if (err) throw err;\n  if (res.code !== 200) {\n    throw new Error(\"Dono \" + pm.collectionVariables.get(\"ownerId\") + \" não existe (status \" + res.code + \"). Rode o CT-API-OWNERS-01 antes.\");\n  }\n  pm.collectionVariables.set(\"ownerBefore\", JSON.stringify(res.json()));\n});\n"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const sent = JSON.parse(pm.request.body.raw);\nconst ownerId = pm.collectionVariables.get(\"ownerId\");\nconst before = JSON.parse(pm.collectionVariables.get(\"ownerBefore\"));\n\npm.test(\"status 400\", () => pm.response.to.have.status(400));\n\n// O 400 tem de ser pelo telefone, não por outro campo\npm.test(\"erro aponta o campo telephone com o valor enviado\", () => {\n  const errors = pm.response.json().schemaValidationErrors;\n  pm.expect(errors, \"lista de erros de validação\").to.be.an(\"array\").and.not.empty;\n  errors.forEach((e) => {\n    pm.expect(e.field).to.eql(\"telephone\");\n    pm.expect(e.rejectedValue).to.eql(sent.telephone);\n  });\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// O dono não pode ter mudado, nem no endereço enviado junto\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/owners/\" + ownerId, (err, res) => {\n  pm.test(\"dono continua igual ao de antes do PUT\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(200);\n    pm.expect(res.json()).to.eql(before);\n  });\n});\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"firstName\": \"Maria\",\n    \"lastName\": \"Souza\",\n    \"address\": \"Rua Alterada, 1\",\n    \"city\": \"Recife\",\n    \"telephone\": \"81999900081\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/owners/{{ownerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners",
+                "{{ownerId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "CT-API-PET-TYPES-01",
           "event": [
             {
