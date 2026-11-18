@@ -7,6 +7,39 @@
   },
   "item": [
     {
+      "name": "Início",
+      "item": [
+        {
+          "name": "CT-API-INTEGRITY-01a",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Fotografa os totais antes de qualquer request da coleção criar dados\nconst base = pm.environment.get(\"baseUrl\");\nconst counts = {};\n\npm.test(\"status 200\", () => pm.response.to.have.status(200));\n\npm.test(\"owners: total inicial lido\", () => {\n  pm.expect(pm.response.json()).to.be.an(\"array\");\n});\ncounts.owners = pm.response.json().length;\npm.collectionVariables.set(\"countsBefore\", JSON.stringify(counts));\n\n[\"pets\", \"pettypes\", \"visits\"].forEach((resource) => {\n  pm.sendRequest(base + \"/\" + resource, (err, res) => {\n    pm.test(resource + \": total inicial lido\", () => {\n      pm.expect(err).to.be.null;\n      pm.expect(res.code).to.eql(200);\n      pm.expect(res.json()).to.be.an(\"array\");\n    });\n    counts[resource] = res.json().length;\n    pm.collectionVariables.set(\"countsBefore\", JSON.stringify(counts));\n  });\n});\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/owners",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "Owners",
       "item": [
         {
@@ -663,6 +696,39 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "Fim",
+      "item": [
+        {
+          "name": "CT-API-INTEGRITY-01b",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Compara os totais de agora com os guardados no CT-API-INTEGRITY-01a\nconst base = pm.environment.get(\"baseUrl\");\nconst saved = pm.collectionVariables.get(\"countsBefore\");\n\n// Apaga a foto para uma execução seguinte nunca comparar com dados antigos\npm.collectionVariables.unset(\"countsBefore\");\n\npm.test(\"status 200\", () => pm.response.to.have.status(200));\n\npm.test(\"totais iniciais disponíveis (rode antes o CT-API-INTEGRITY-01a)\", () => {\n  pm.expect(saved, \"countsBefore\").to.be.a(\"string\").and.not.empty;\n});\n\nconst before = saved ? JSON.parse(saved) : {};\n\npm.test(\"owners: mesmo total do início\", () => {\n  pm.expect(pm.response.json().length).to.eql(before.owners);\n});\n\n[\"pets\", \"pettypes\", \"visits\"].forEach((resource) => {\n  pm.sendRequest(base + \"/\" + resource, (err, res) => {\n    pm.test(resource + \": mesmo total do início\", () => {\n      pm.expect(err).to.be.null;\n      pm.expect(res.code).to.eql(200);\n      pm.expect(res.json().length).to.eql(before[resource]);\n    });\n  });\n});\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/owners",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
     }
   ],
   "variable": [
@@ -704,6 +770,10 @@
     },
     {
       "key": "telephoneOwnerId",
+      "value": ""
+    },
+    {
+      "key": "countsBefore",
       "value": ""
     }
   ]

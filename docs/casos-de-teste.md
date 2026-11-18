@@ -1,6 +1,6 @@
 # Casos de teste — petclinic-sql-api
 
-Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um por teste a automatizar, identificados pelo ID CT que vai no comentário acima do teste no código. Os arquivos de cada seção são os previstos em `tests/api/`; nenhum existe ainda. Total: 79 casos.
+Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um por teste a automatizar, identificados pelo ID CT que vai no comentário acima do teste no código. Os arquivos de cada seção são os previstos em `tests/api/`; nenhum existe ainda. A exceção é a seção Postman, que já roda na coleção. Total: 80 casos.
 
 **Notas gerais**
 
@@ -25,11 +25,12 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | API | [tests/api/test_specialties.py](#testsapitest_specialtiespy) | 8 |
 | API | [tests/api/test_vets.py](#testsapitest_vetspy) | 11 |
 | API | [tests/api/test_users.py](#testsapitest_userspy) | 9 |
+| Postman | [postman/petclinic.postman_collection.json](#postmanpetclinicpostman_collectionjson) | 1 |
 | Bugs conhecidos | [tests/api/known_bugs/test_http_status.py](#testsapiknown_bugstest_http_statuspy) | 1 |
 | Bugs conhecidos | [tests/api/known_bugs/test_schema_indexes.py](#testsapiknown_bugstest_schema_indexespy) | 1 |
 | Bugs conhecidos | [tests/api/known_bugs/test_owner_delete.py](#testsapiknown_bugstest_owner_deletepy) | 2 |
 | Bugs conhecidos | [tests/api/known_bugs/test_visit_create.py](#testsapiknown_bugstest_visit_createpy) | 1 |
-| **Total** | | **79** |
+| **Total** | | **80** |
 
 ## API
 
@@ -1148,6 +1149,26 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Passos** | 1. Enviar POST /api/users.<br>2. Verificar a resposta.<br>3. Buscar no banco os papéis desse username. |
 | **Resultado esperado** | Status 2xx e exatamente duas linhas em `roles`: `ROLE_OWNER_ADMIN` e `ROLE_VET_ADMIN`. |
 | **Status** | Não executado |
+
+## Postman
+
+### postman/petclinic.postman_collection.json
+
+#### CT-API-INTEGRITY-01 — Coleção termina com os mesmos totais do início
+
+| Campo | Descrição |
+|---|---|
+| **Módulo / Área** | API › Integridade da execução |
+| **Tipo de teste** | Funcional – efeito no servidor |
+| **Prioridade** | Alta |
+| **Objetivo** | Garantir que a coleção não deixa dados para trás, inclusive registros cujo id nenhuma limpeza conhece. |
+| **Pré-condições** | Ambiente no ar; coleção executada inteira e na ordem. |
+| **Dados de teste** | Totais de GET /api/owners, /api/pets, /api/pettypes e /api/visits. |
+| **Passos** | 1. `CT-API-INTEGRITY-01a` (pasta Início): guardar os quatro totais antes de qualquer outro request.<br>2. Executar os demais requests e as limpezas.<br>3. `CT-API-INTEGRITY-01b` (pasta Fim): ler os quatro totais de novo e comparar. |
+| **Resultado esperado** | Passo 1: as quatro leituras respondem 200 com uma lista.<br>Passo 3: cada total é igual ao do passo 1. |
+| **Resultado obtido** | Os quatro totais iguais aos do início, com 68 asserções e 0 falhas no Newman. |
+| **Status** | Passou em 2026-11-18 |
+| **Observações** | A leitura é feita pela API, porque o Postman não acessa o banco. A comparação pega linha sobrando ou faltando, mas não um registro alterado com o total igual, como no BUG-04. Falha simulada em cópias da coleção: sem a limpeza do dono do 03b (`owners` 11 em vez de 10), sem a limpeza do tipo (`pettypes` 7 em vez de 6), com os totais iniciais alterados e sem o request inicial. |
 
 ## Bugs conhecidos
 
