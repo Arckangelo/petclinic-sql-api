@@ -1,6 +1,6 @@
 # Casos de teste — petclinic-sql-api
 
-Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um por teste a automatizar, identificados pelo ID CT que vai no comentário acima do teste no código. Os arquivos de cada seção são os previstos em `tests/api/`; nenhum existe ainda. A exceção é a seção Postman, que já roda na coleção. Total: 82 casos.
+Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um por teste a automatizar, identificados pelo ID CT que vai no comentário acima do teste no código. Os arquivos de cada seção são os previstos em `tests/api/`; nenhum existe ainda. A exceção é a seção Postman, que já roda na coleção. Total: 83 casos.
 
 **Notas gerais**
 
@@ -30,7 +30,8 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | Bugs conhecidos | [tests/api/known_bugs/test_schema_indexes.py](#testsapiknown_bugstest_schema_indexespy) | 1 |
 | Bugs conhecidos | [tests/api/known_bugs/test_owner_delete.py](#testsapiknown_bugstest_owner_deletepy) | 2 |
 | Bugs conhecidos | [tests/api/known_bugs/test_visit_create.py](#testsapiknown_bugstest_visit_createpy) | 1 |
-| **Total** | | **82** |
+| Bugs conhecidos | [tests/api/known_bugs/test_owner_search.py](#testsapiknown_bugstest_owner_searchpy) | 1 |
+| **Total** | | **83** |
 
 ## API
 
@@ -1291,3 +1292,22 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Resultado obtido** | Passo 3: status 201 com o mesmo id enviado. Passo 4: a visita existente mudou de pet, data e descrição; a contagem não mudou (BUGS.md). |
 | **Status** | Não executado |
 | **Observações** | Reproduzido do zero em 2026-11-17 com a visita 1 do `populateDB`; o teste deve criar a própria visita existente, sem depender do `populateDB`. É o par do CT-API-OWNERS-13a, em que o POST de dono ignora o id enviado. Teardown: visitas, depois pets, dono e tipo; cada remoção aceita "já removido". |
+
+### tests/api/known_bugs/test_owner_search.py
+
+#### CT-BUGS-OWNER-SEARCH-01 — [BUG-05] Busca de donos sem resultado responde 200 com lista vazia
+
+| Campo | Descrição |
+|---|---|
+| **Módulo / Área** | Bugs conhecidos › API › Donos › Consulta |
+| **Tipo de teste** | Funcional – contrato da API |
+| **Prioridade** | Média |
+| **Bug relacionado** | BUG-05 |
+| **Objetivo** | Garantir que uma busca por sobrenome sem resultado é tratada como sucesso, com lista vazia. |
+| **Pré-condições** | Prefixo de sobrenome sem nenhum dono no banco, conferido na hora. |
+| **Dados de teste** | Prefixo único, gerado pelo teste. |
+| **Passos** | 1. Confirmar no banco que nenhum dono tem sobrenome começando pelo prefixo.<br>2. Enviar GET /api/owners?lastName=&lt;prefixo&gt;.<br>3. Verificar a resposta. |
+| **Resultado esperado** | Status 200 e lista vazia. |
+| **Resultado obtido** | Status 404 com corpo vazio (BUGS.md). |
+| **Status** | Não executado |
+| **Observações** | Reproduzido do zero em 2026-11-18. O contrato de GET /api/owners documenta 200, 304 e 500, sem 404. O teste não cria dados, então não precisa de limpeza. |

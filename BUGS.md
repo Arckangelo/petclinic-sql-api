@@ -6,7 +6,7 @@ detalhes de cada um: passos, esperado, obtido, evidência no banco e, quando con
 Ambiente: `springcommunity/spring-petclinic-rest:latest` (4.0.2) com `postgres:16.3`, via `docker compose`. Todos
 reproduzidos do zero (`docker compose down -v` e `up -d --wait`). BUG-01, BUG-02 e BUG-03 foram reproduzidos de novo
 em 2026-11-15 na `4.0.2` republicada em 2026-11-14 (digest `sha256:daba846d…`); o BUG-04 foi reproduzido nela em
-2026-11-17.
+2026-11-17 e o BUG-05, em 2026-11-18.
 
 | Bug | Resumo | Impacto | Issue |
 |:---|:---|:---|:---|
@@ -14,6 +14,7 @@ em 2026-11-15 na `4.0.2` republicada em 2026-11-14 (digest `sha256:daba846d…`)
 | [BUG-02](#bug-02--cada-reinício-da-api-cria-mais-uma-cópia-de-7-índices-do-banco) | Cada reinício da API duplica 7 índices | baixo, acumula | [#2](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/2) |
 | [BUG-03](#bug-03--apagar-um-dono-apaga-também-o-tipo-do-pet-dele) | Apagar dono apaga também o tipo do pet | alto | [#3](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/3) |
 | [BUG-04](#bug-04--criar-visita-com-id-no-corpo-sobrescreve-uma-visita-que-já-existe) | POST de visita com `id` sobrescreve visita existente | alto | [#4](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/4) |
+| [BUG-05](#bug-05--busca-de-donos-sem-resultado-responde-404-em-vez-de-200-com-lista-vazia) | Busca de donos sem resultado responde 404 em vez de lista vazia | baixo a médio | [#5](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/5) |
 
 ## BUG-01 · API responde 500 em vez de 400 quando o id do dono não é numérico
 
@@ -142,6 +143,30 @@ em 2026-11-15 na `4.0.2` republicada em 2026-11-14 (digest `sha256:daba846d…`)
   Para uma criação isso não faz sentido, e a API usa esse id para gravar por cima de uma visita existente.
 - **Impacto:** alto. Qualquer cliente que envie o `id` (por engano, ou copiando a resposta de outra visita) apaga o
   histórico de outro pet sem nenhum aviso, com uma resposta que parece sucesso. Só o banco mostra a troca.
+
+## BUG-05 · Busca de donos sem resultado responde 404 em vez de 200 com lista vazia
+
+- **Issue:** [#5](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/5)
+- **Passos:** `docker compose down -v` → `up -d --wait` → conferir no banco quantos donos têm sobrenome começando por
+  `Davis`, `davis` e `Naoexiste` → `GET /api/owners?lastName=Davis` → `GET /api/owners?lastName=Naoexiste` →
+  `GET /api/owners?lastName=davis`.
+- **Esperado:** `200 OK` com os donos encontrados e, quando não há nenhum, `200 OK` com a lista vazia (`[]`).
+- **Obtido:** a busca sem resultado responde `404` com corpo vazio.
+
+  | Busca | Linhas no banco | Resposta |
+  |:---|:---|:---|
+  | `lastName=Davis` | 2 | `200`, com os 2 donos |
+  | `lastName=Naoexiste` | 0 | `404`, corpo vazio |
+  | `lastName=davis` | 0 | `404`, corpo vazio |
+
+- **Evidência no banco:** a contagem de donos por prefixo do sobrenome (tabela acima) confirma que a consulta não
+  tem linhas e que o recurso existe. Reproduzido do zero em 2026-11-18, na imagem `4.0.2` (digest `sha256:daba846d…`).
+- **Relação com o contrato:** `GET /api/owners` documenta `200` (lista de `Owner`), `304` e `500`. O `404` não está
+  previsto. Diferenciar maiúsculas (`davis` não encontra `Davis`) não é o defeito: o contrato não define isso.
+- **Causa provável:** a classe `OwnerRestControllerV1` da imagem cita `findAllOwners`, `isEmpty` e `NOT_FOUND`, o que
+  sugere transformar lista vazia em `404`. É um indício: a lógica do método não foi lida.
+- **Impacto:** baixo a médio. Nenhum dado é afetado, mas o cliente precisa tratar "nenhum resultado" como erro e não
+  distingue esse caso de uma URL errada.
 
 ## Observações
 

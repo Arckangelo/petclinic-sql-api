@@ -108,7 +108,7 @@ O banco permite todos os casos acima; nos dados atuais só aparecem os pets anti
 
 ## Achados
 
-Quatro bugs e uma observação de contrato, todos reproduzidos do zero e com evidência no banco. Os detalhes (passos,
+Cinco bugs e uma observação de contrato, todos reproduzidos do zero e com evidência no banco. Os detalhes (passos,
 esperado, obtido, evidência e causa) estão em [BUGS.md](BUGS.md).
 
 | Bug | Resumo | Impacto | Issue |
@@ -117,6 +117,7 @@ esperado, obtido, evidência e causa) estão em [BUGS.md](BUGS.md).
 | BUG-02 | Cada reinício da API cria mais uma cópia de 7 índices do banco (a suíte limpa as cópias automaticamente) | baixo, acumula | [#2](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/2) |
 | BUG-03 | Apagar um dono apaga também o tipo do pet; com tipo compartilhado, o dono não pode ser apagado | alto | [#3](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/3) |
 | BUG-04 | `POST /api/visits` com `id` no corpo sobrescreve uma visita existente e responde 201 | alto | [#4](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/4) |
+| BUG-05 | `GET /api/owners?lastName=` sem resultado responde 404 em vez de 200 com lista vazia | baixo a médio | [#5](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/5) |
 
 **OBS-01:** o contrato documenta 200 como sucesso em sete endpoints, mas a API devolve 201 ou 204 (o correto). Não
 é bug; fica para a validação de contrato da fase 5.
