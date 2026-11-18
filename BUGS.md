@@ -6,7 +6,7 @@ detalhes de cada um: passos, esperado, obtido, evidência no banco e, quando con
 Ambiente: `springcommunity/spring-petclinic-rest:latest` (4.0.2) com `postgres:16.3`, via `docker compose`. Todos
 reproduzidos do zero (`docker compose down -v` e `up -d --wait`). BUG-01, BUG-02 e BUG-03 foram reproduzidos de novo
 em 2026-11-15 na `4.0.2` republicada em 2026-11-14 (digest `sha256:daba846d…`); o BUG-04 foi reproduzido nela em
-2026-11-17, e o BUG-05, o BUG-06 e o BUG-07, em 2026-11-18.
+2026-11-17, e o BUG-05, o BUG-06, o BUG-07 e o BUG-08, em 2026-11-18.
 
 | Bug | Resumo | Impacto | Issue |
 |:---|:---|:---|:---|
@@ -17,6 +17,7 @@ em 2026-11-15 na `4.0.2` republicada em 2026-11-14 (digest `sha256:daba846d…`)
 | [BUG-05](#bug-05--busca-de-donos-sem-resultado-responde-404-em-vez-de-200-com-lista-vazia) | Busca de donos sem resultado responde 404 em vez de lista vazia | baixo a médio | [#5](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/5) |
 | [BUG-06](#bug-06--nome-de-pet-só-com-espaços-é-aceito-e-gravado) | Nome de pet só com espaços é aceito e gravado | baixo a médio | [#6](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/6) |
 | [BUG-07](#bug-07--apagar-um-tipo-de-pet-apaga-todos-os-pets-desse-tipo-e-as-visitas-deles) | Apagar tipo apaga todos os pets desse tipo e as visitas deles | alto | [#7](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/7) |
+| [BUG-08](#bug-08--corpo-ilegível-responde-500-em-vez-de-400) | Corpo ilegível responde 500 em vez de 400 | médio | [#8](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/8) |
 
 ## BUG-01 · API responde 500 em vez de 400 quando o id do dono não é numérico
 
@@ -225,6 +226,33 @@ em 2026-11-15 na `4.0.2` republicada em 2026-11-14 (digest `sha256:daba846d…`)
   `409`. A diferença para o `CT-API-OWNERS-10` é que um dono é responsável pelos próprios pets; o tipo é compartilhado.
 - **Impacto:** alto. Uma única chamada apaga pets e históricos de visitas de vários donos, sem aviso e com uma resposta
   de sucesso. Só o banco mostra o que se perdeu.
+
+## BUG-08 · Corpo ilegível responde 500 em vez de 400
+
+- **Issue:** [#8](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/8)
+- **Passos:** `docker compose down -v` → `up -d --wait` → criar um dono e um tipo → contar as linhas de `pets` →
+  `POST /api/owners/{ownerId}/pets` com `birthDate` igual a `2020-02-30`, depois `04/03/2010` e depois `ontem` →
+  contar as linhas de `pets` de novo.
+- **Esperado:** `400 Bad Request`, indicando o campo inválido, e nenhum pet novo.
+- **Obtido:** `500`, com `"title": "HttpMessageNotReadableException"`, `"detail": "An unexpected error occurred while
+  processing your request"` e a lista de erros de validação vazia.
+
+  | Pedido | Resposta |
+  |:---|:---|
+  | Pet com `birthDate` `2020-02-30` | `500` |
+  | Pet com `birthDate` `04/03/2010` | `500` |
+  | Pet com `birthDate` `ontem` | `500` |
+  | `POST /api/owners` com JSON quebrado | `500` |
+  | Pet com `type.id` em texto | `500` |
+  | Visita com `date` `2020-02-30` | `500` |
+
+- **Evidência no banco:** `pets` tem 13 linhas antes e depois dos três pedidos com data inválida. Reproduzido do zero
+  em 2026-11-18, na imagem `4.0.2` (digest `sha256:daba846d…`).
+- **Causa:** o log mostra `HttpMessageNotReadableException`, com `Cannot deserialize value of type java.time.LocalDate`
+  nos casos de data. A classe `ExceptionControllerAdvice` da imagem trata `MethodArgumentNotValidException`, violação
+  de integridade e erros gerais, mas não trata corpo ilegível; por isso o erro cai no tratamento geral e vira `500`.
+- **Impacto:** médio. Nenhum dado é afetado, mas um erro do cliente aparece como falha do servidor: quem chama a API
+  não sabe o que corrigir, o monitoramento recebe alarmes falsos e o nome da exceção fica exposto, como no BUG-01.
 
 ## Observações
 

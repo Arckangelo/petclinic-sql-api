@@ -1,6 +1,6 @@
 # Casos de teste — petclinic-sql-api
 
-Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um por teste a automatizar, identificados pelo ID CT que vai no comentário acima do teste no código. Os arquivos de cada seção são os previstos em `tests/api/`; nenhum existe ainda. A exceção é a seção Postman, que já roda na coleção. Total: 85 casos.
+Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um por teste a automatizar, identificados pelo ID CT que vai no comentário acima do teste no código. Os arquivos de cada seção são os previstos em `tests/api/`; nenhum existe ainda. A exceção é a seção Postman, que já roda na coleção. Total: 86 casos.
 
 **Notas gerais**
 
@@ -33,7 +33,8 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | Bugs conhecidos | [tests/api/known_bugs/test_owner_search.py](#testsapiknown_bugstest_owner_searchpy) | 1 |
 | Bugs conhecidos | [tests/api/known_bugs/test_pet_name.py](#testsapiknown_bugstest_pet_namepy) | 1 |
 | Bugs conhecidos | [tests/api/known_bugs/test_pet_type_delete.py](#testsapiknown_bugstest_pet_type_deletepy) | 1 |
-| **Total** | | **85** |
+| Bugs conhecidos | [tests/api/known_bugs/test_request_body.py](#testsapiknown_bugstest_request_bodypy) | 1 |
+| **Total** | | **86** |
 
 ## API
 
@@ -366,7 +367,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Passos** | 1. Para cada data, enviar POST /api/owners/{ownerId}/pets.<br>2. Verificar a resposta e o banco. |
 | **Resultado esperado** | Status 400 em todos e nenhum pet novo. |
 | **Status** | Não executado |
-| **Observações** | Dicionário: o banco recusa 2020-02-30, mas lê `04/03/2010` como 3 de abril (DateStyle MDY). A API não pode repassar a data como texto ao banco. |
+| **Observações** | Dicionário: o banco recusa 2020-02-30, mas lê `04/03/2010` como 3 de abril (DateStyle MDY). A API não pode repassar a data como texto ao banco.<br>Hoje os três valores respondem 500 e nenhum pet é criado: é o BUG-08 (CT-BUGS-REQUEST-BODY-01). Por isso este caso não entra na coleção do Postman, que continua sem falhas conhecidas. |
 
 #### CT-API-PETS-08 — Criar pet para dono inexistente
 
@@ -1351,3 +1352,22 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Resultado obtido** | Passo 3: status 204. Passo 4: tipo, os dois pets e a visita não existem mais; os donos continuam (BUGS.md). |
 | **Status** | Não executado |
 | **Observações** | Reproduzido do zero em 2026-11-18. Teardown: visita, pets, donos e tipo; cada remoção aceita "já removido". |
+
+### tests/api/known_bugs/test_request_body.py
+
+#### CT-BUGS-REQUEST-BODY-01 — [BUG-08] Corpo ilegível responde 400
+
+| Campo | Descrição |
+|---|---|
+| **Módulo / Área** | Bugs conhecidos › API › Tratamento de erros |
+| **Tipo de teste** | Robustez – entrada inválida |
+| **Prioridade** | Média |
+| **Bug relacionado** | BUG-08 |
+| **Objetivo** | Garantir que um corpo que não pode ser lido é tratado como erro do cliente, sem expor detalhes internos. |
+| **Pré-condições** | Dono e tipo criados via API. |
+| **Dados de teste** | Pet com birthDate `'2020-02-30'`, `'04/03/2010'` e `'ontem'`; pet com `type.id` em texto; dono com JSON quebrado. |
+| **Passos** | 1. Contar as linhas de `owners` e `pets`.<br>2. Enviar cada pedido.<br>3. Verificar cada resposta.<br>4. Contar as linhas de novo. |
+| **Resultado esperado** | Passo 3: status 400 em todos, sem nome de exceção Java no corpo.<br>Passo 4: mesmas contagens do passo 1. |
+| **Resultado obtido** | Passo 3: status 500 com `HttpMessageNotReadableException`. Passo 4: contagens iguais (BUGS.md). |
+| **Status** | Não executado |
+| **Observações** | Reproduzido do zero em 2026-11-18. Um caso parametrizado por pedido (`pytest.mark.parametrize`). Teardown: dono e tipo; cada remoção aceita "já removido". |
