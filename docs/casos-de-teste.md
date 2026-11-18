@@ -1,6 +1,6 @@
 # Casos de teste — petclinic-sql-api
 
-Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um por teste a automatizar, identificados pelo ID CT que vai no comentário acima do teste no código. Os arquivos de cada seção são os previstos em `tests/api/`; nenhum existe ainda. A exceção é a seção Postman, que já roda na coleção. Total: 80 casos.
+Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um por teste a automatizar, identificados pelo ID CT que vai no comentário acima do teste no código. Os arquivos de cada seção são os previstos em `tests/api/`; nenhum existe ainda. A exceção é a seção Postman, que já roda na coleção. Total: 81 casos.
 
 **Notas gerais**
 
@@ -18,7 +18,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 
 | Área | Arquivo | Casos |
 |---|---|---|
-| API | [tests/api/test_owners.py](#testsapitest_ownerspy) | 13 |
+| API | [tests/api/test_owners.py](#testsapitest_ownerspy) | 14 |
 | API | [tests/api/test_pets.py](#testsapitest_petspy) | 13 |
 | API | [tests/api/test_visits.py](#testsapitest_visitspy) | 12 |
 | API | [tests/api/test_pet_types.py](#testsapitest_pet_typespy) | 8 |
@@ -30,7 +30,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | Bugs conhecidos | [tests/api/known_bugs/test_schema_indexes.py](#testsapiknown_bugstest_schema_indexespy) | 1 |
 | Bugs conhecidos | [tests/api/known_bugs/test_owner_delete.py](#testsapiknown_bugstest_owner_deletepy) | 2 |
 | Bugs conhecidos | [tests/api/known_bugs/test_visit_create.py](#testsapiknown_bugstest_visit_createpy) | 1 |
-| **Total** | | **80** |
+| **Total** | | **81** |
 
 ## API
 
@@ -225,6 +225,20 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Resultado esperado** | Passos 2 e 3: status 201, com um id no corpo diferente do enviado.<br>Passo 4: o dono A está igual ao do passo 1; há uma linha nova para cada id devolvido, com os dados enviados; nenhuma linha tem o id inexistente enviado. |
 | **Status** | Não executado |
 | **Observações** | O contrato marca o id do dono como somente leitura (readOnly). Comportamento seguro: não é bug.<br>O id inexistente fica longe do maior id: com maior id + 1, o banco poderia gerar justamente esse id e mascarar a falha.<br>Conferido à mão em 2026-11-14 (Postman, e curl com consulta ao banco): id 1 e id 9999 no corpo → 201 com ids 13 e 14 gerados pelo banco; o dono 1 ficou intacto e nenhuma linha com id 9999. |
+
+#### CT-API-OWNERS-14 — Nome e sobrenome com dígitos
+
+| Campo | Descrição |
+|---|---|
+| **Módulo / Área** | API › Donos › Criação |
+| **Tipo de teste** | Funcional – validação de formato |
+| **Prioridade** | Média |
+| **Objetivo** | Garantir que a API recusa nome ou sobrenome com dígitos e não grava o dono. |
+| **Dados de teste** | firstName e, depois, lastName com `'Ana2'`; os demais campos válidos. |
+| **Passos** | 1. Para cada campo, enviar POST /api/owners com o dono padrão e o campo alterado.<br>2. Verificar a resposta e o banco. |
+| **Resultado esperado** | Status 400, com o erro apontando o campo alterado, e banco intacto. |
+| **Status** | Não executado |
+| **Observações** | O valor tem tamanho válido, para isolar a regra de formato. No banco, `first_name` e `last_name` são `text`, sem restrição de conteúdo: só a API impede o dígito.<br>Na coleção do Postman: `CT-API-OWNERS-14a` e `14b`. |
 
 ### tests/api/test_pets.py
 
