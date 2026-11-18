@@ -905,6 +905,49 @@
           "response": []
         },
         {
+          "name": "CT-API-OWNERS-12",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Cria dois donos com o prefixo buscado e um com outro sobrenome\nconst base = pm.environment.get(\"baseUrl\");\nconst owners = [\n  { lastName: \"Quixadaum\", variable: \"searchFirstOwnerId\" },\n  { lastName: \"Quixadadois\", variable: \"searchSecondOwnerId\" },\n  { lastName: \"Outrosobrenome\", variable: \"searchOtherOwnerId\" }\n];\n\nfunction createOwner(index) {\n  if (index === owners.length) return;\n  const owner = {\n    firstName: \"Clara\",\n    lastName: owners[index].lastName,\n    address: \"Rua do Sol, 30\",\n    city: \"Olinda\",\n    telephone: \"8199990012\"\n  };\n  pm.sendRequest({\n    url: base + \"/owners\",\n    method: \"POST\",\n    header: { \"Content-Type\": \"application/json\" },\n    body: { mode: \"raw\", raw: JSON.stringify(owner) }\n  }, (err, res) => {\n    if (err) throw err;\n    if (res.code !== 201) throw new Error(\"Preparação falhou: POST do dono devolveu \" + res.code);\n    pm.collectionVariables.set(owners[index].variable, res.json().id);\n    createOwner(index + 1);\n  });\n}\n\ncreateOwner(0);\n"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const prefix = pm.request.url.query.get(\"lastName\");\nconst expectedIds = [\n  Number(pm.collectionVariables.get(\"searchFirstOwnerId\")),\n  Number(pm.collectionVariables.get(\"searchSecondOwnerId\"))\n].sort((a, b) => a - b);\n\npm.test(\"status 200\", () => pm.response.to.have.status(200));\n\n// Exatamente os dois donos do prefixo: nem menos, nem o terceiro\npm.test(\"devolve exatamente os donos criados com o prefixo\", () => {\n  const ids = pm.response.json().map((owner) => owner.id).sort((a, b) => a - b);\n  pm.expect(ids).to.eql(expectedIds);\n});\n\npm.test(\"todos os sobrenomes começam com o prefixo\", () => {\n  pm.response.json().forEach((owner) => {\n    pm.expect(owner.lastName.startsWith(prefix), owner.lastName).to.be.true;\n  });\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/owners?lastName=Quixada",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners"
+              ],
+              "query": [
+                {
+                  "key": "lastName",
+                  "value": "Quixada"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "CT-API-OWNERS-13a",
           "event": [
             {
@@ -1663,6 +1706,35 @@
           "response": []
         },
         {
+          "name": "Limpeza: CT-API-OWNERS-12",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Apaga os três donos criados no CT-API-OWNERS-12\nconst base = pm.environment.get(\"baseUrl\");\nconst ids = [\n  pm.collectionVariables.get(\"searchFirstOwnerId\"),\n  pm.collectionVariables.get(\"searchSecondOwnerId\"),\n  pm.collectionVariables.get(\"searchOtherOwnerId\")\n];\n\nfunction checkDeleted(code, position) {\n  pm.test(\"dono \" + position + \": apagado ou já removido (204 ou 404)\", () => {\n    pm.expect(code).to.be.oneOf([204, 404]);\n  });\n}\n\nfunction confirmGone(index) {\n  pm.sendRequest(base + \"/owners/\" + ids[index], (err, res) => {\n    pm.test(\"dono \" + (index + 1) + \": não existe mais (GET devolve 404)\", () => {\n      pm.expect(err).to.be.null;\n      pm.expect(res.code).to.eql(404);\n    });\n\n    if (index + 1 === ids.length) return;\n    pm.sendRequest({ url: base + \"/owners/\" + ids[index + 1], method: \"DELETE\" }, (delErr, delRes) => {\n      if (delErr) throw delErr;\n      checkDeleted(delRes.code, index + 2);\n      confirmGone(index + 1);\n    });\n  });\n}\n\ncheckDeleted(pm.response.code, 1);\nconfirmGone(0);\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/owners/{{searchFirstOwnerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners",
+                "{{searchFirstOwnerId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "Limpeza: CT-API-OWNERS-13b",
           "event": [
             {
@@ -1948,6 +2020,18 @@
     },
     {
       "key": "nonexistentOwnerId",
+      "value": ""
+    },
+    {
+      "key": "searchFirstOwnerId",
+      "value": ""
+    },
+    {
+      "key": "searchSecondOwnerId",
+      "value": ""
+    },
+    {
+      "key": "searchOtherOwnerId",
       "value": ""
     }
   ]
