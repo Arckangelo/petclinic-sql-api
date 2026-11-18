@@ -417,6 +417,202 @@
           "response": []
         },
         {
+          "name": "CT-API-OWNERS-05a",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Quantos donos existem antes do POST (a API como espelho do banco; o banco direto fica para o pytest)\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/owners\", (err, res) => {\n  pm.collectionVariables.set(\"ownersCountBefore\", res.json().length);\n});\n"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Campo inválido neste request\nconst field = \"firstName\";\n\nconst sent = JSON.parse(pm.request.body.raw);\nconst body = pm.response.json();\nconst countBefore = Number(pm.collectionVariables.get(\"ownersCountBefore\"));\n\npm.test(\"status 400\", () => pm.response.to.have.status(400));\n\n// O 400 tem de ser por este campo, não por outro\npm.test(\"erro aponta o campo \" + field + \" com o valor enviado\", () => {\n  pm.expect(body.schemaValidationErrors, \"lista de erros de validação\").to.be.an(\"array\");\n  const fields = body.schemaValidationErrors.map((e) => e.field);\n  pm.expect(fields).to.include(field);\n  body.schemaValidationErrors.forEach((e) => {\n    pm.expect(e.field).to.eql(field);\n    pm.expect(e.rejectedValue).to.eql(sent[field]);\n  });\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// Nenhum dono pode ter sido criado\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/owners\", (err, res) => {\n  pm.test(\"quantidade de donos não mudou\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.json().length).to.eql(countBefore);\n  });\n});\n"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"firstName\": \"\",\n    \"lastName\": \"Lima\",\n    \"address\": \"Rua do Sol, 30\",\n    \"city\": \"Olinda\",\n    \"telephone\": \"8199990005\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/owners",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "CT-API-OWNERS-05b",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Quantos donos existem antes do POST (a API como espelho do banco; o banco direto fica para o pytest)\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/owners\", (err, res) => {\n  pm.collectionVariables.set(\"ownersCountBefore\", res.json().length);\n});\n"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Campo inválido neste request\nconst field = \"firstName\";\n\nconst sent = JSON.parse(pm.request.body.raw);\nconst body = pm.response.json();\nconst countBefore = Number(pm.collectionVariables.get(\"ownersCountBefore\"));\n\npm.test(\"status 400\", () => pm.response.to.have.status(400));\n\n// O 400 tem de ser por este campo, não por outro\npm.test(\"erro aponta o campo \" + field + \" com o valor enviado\", () => {\n  pm.expect(body.schemaValidationErrors, \"lista de erros de validação\").to.be.an(\"array\");\n  const fields = body.schemaValidationErrors.map((e) => e.field);\n  pm.expect(fields).to.include(field);\n  body.schemaValidationErrors.forEach((e) => {\n    pm.expect(e.field).to.eql(field);\n    pm.expect(e.rejectedValue).to.eql(sent[field]);\n  });\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// Nenhum dono pode ter sido criado\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/owners\", (err, res) => {\n  pm.test(\"quantidade de donos não mudou\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.json().length).to.eql(countBefore);\n  });\n});\n"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"firstName\": \"   \",\n    \"lastName\": \"Lima\",\n    \"address\": \"Rua do Sol, 30\",\n    \"city\": \"Olinda\",\n    \"telephone\": \"8199990005\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/owners",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "CT-API-OWNERS-05c",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Quantos donos existem antes do POST (a API como espelho do banco; o banco direto fica para o pytest)\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/owners\", (err, res) => {\n  pm.collectionVariables.set(\"ownersCountBefore\", res.json().length);\n});\n"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Campo inválido neste request\nconst field = \"lastName\";\n\nconst sent = JSON.parse(pm.request.body.raw);\nconst body = pm.response.json();\nconst countBefore = Number(pm.collectionVariables.get(\"ownersCountBefore\"));\n\npm.test(\"status 400\", () => pm.response.to.have.status(400));\n\n// O 400 tem de ser por este campo, não por outro\npm.test(\"erro aponta o campo \" + field + \" com o valor enviado\", () => {\n  pm.expect(body.schemaValidationErrors, \"lista de erros de validação\").to.be.an(\"array\");\n  const fields = body.schemaValidationErrors.map((e) => e.field);\n  pm.expect(fields).to.include(field);\n  body.schemaValidationErrors.forEach((e) => {\n    pm.expect(e.field).to.eql(field);\n    pm.expect(e.rejectedValue).to.eql(sent[field]);\n  });\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// Nenhum dono pode ter sido criado\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/owners\", (err, res) => {\n  pm.test(\"quantidade de donos não mudou\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.json().length).to.eql(countBefore);\n  });\n});\n"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"firstName\": \"Clara\",\n    \"lastName\": \"\",\n    \"address\": \"Rua do Sol, 30\",\n    \"city\": \"Olinda\",\n    \"telephone\": \"8199990005\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/owners",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "CT-API-OWNERS-05d",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Quantos donos existem antes do POST (a API como espelho do banco; o banco direto fica para o pytest)\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/owners\", (err, res) => {\n  pm.collectionVariables.set(\"ownersCountBefore\", res.json().length);\n});\n"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Campo inválido neste request\nconst field = \"lastName\";\n\nconst sent = JSON.parse(pm.request.body.raw);\nconst body = pm.response.json();\nconst countBefore = Number(pm.collectionVariables.get(\"ownersCountBefore\"));\n\npm.test(\"status 400\", () => pm.response.to.have.status(400));\n\n// O 400 tem de ser por este campo, não por outro\npm.test(\"erro aponta o campo \" + field + \" com o valor enviado\", () => {\n  pm.expect(body.schemaValidationErrors, \"lista de erros de validação\").to.be.an(\"array\");\n  const fields = body.schemaValidationErrors.map((e) => e.field);\n  pm.expect(fields).to.include(field);\n  body.schemaValidationErrors.forEach((e) => {\n    pm.expect(e.field).to.eql(field);\n    pm.expect(e.rejectedValue).to.eql(sent[field]);\n  });\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// Nenhum dono pode ter sido criado\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/owners\", (err, res) => {\n  pm.test(\"quantidade de donos não mudou\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.json().length).to.eql(countBefore);\n  });\n});\n"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"firstName\": \"Clara\",\n    \"lastName\": \"   \",\n    \"address\": \"Rua do Sol, 30\",\n    \"city\": \"Olinda\",\n    \"telephone\": \"8199990005\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/owners",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "CT-API-OWNERS-13a",
           "event": [
             {
