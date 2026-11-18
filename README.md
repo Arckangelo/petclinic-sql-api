@@ -108,7 +108,7 @@ O banco permite todos os casos acima; nos dados atuais só aparecem os pets anti
 
 ## Achados
 
-Nove bugs e uma observação de contrato, todos reproduzidos do zero e com evidência no banco. Os detalhes (passos,
+Nove bugs e duas observações, todos reproduzidos do zero e com evidência no banco. Os detalhes (passos,
 esperado, obtido, evidência e causa) estão em [BUGS.md](BUGS.md).
 
 | Bug | Resumo | Impacto | Issue |
@@ -125,6 +125,9 @@ esperado, obtido, evidência e causa) estão em [BUGS.md](BUGS.md).
 
 **OBS-01:** o contrato documenta 200 como sucesso em sete endpoints, mas a API devolve 201 ou 204 (o correto). Não
 é bug; fica para a validação de contrato da fase 5.
+
+**OBS-02:** pet com tipo inexistente recebe 404 e nada é gravado, mas a recusa só acontece no banco e a resposta
+expõe o nome da exceção.
 
 ## O que ficou de fora
 

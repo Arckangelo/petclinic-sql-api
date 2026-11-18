@@ -398,7 +398,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Passos** | 1. Enviar POST /api/owners/{ownerId}/pets com esse tipo.<br>2. Verificar a resposta e os pets do dono no banco. |
 | **Resultado esperado** | Status 4xx (400 ou 404) e zero pets. |
 | **Status** | Não executado |
-| **Observações** | Dicionário: a chave `pets_type_id_fkey` recusa no banco. Um 500 aqui indica que a validação ficou para o banco. |
+| **Observações** | Dicionário: a chave `pets_type_id_fkey` recusa no banco. Um 500 aqui indica que a validação ficou para o banco.<br>Hoje a API responde 404 e não grava o pet, mas a recusa vem do `NOT NULL` de `pets.type_id`, porque ela tenta gravar o tipo nulo: é a OBS-02. Na coleção, o dono já tem pets de outros casos, então a verificação compara a contagem antes e depois. |
 
 #### CT-API-PETS-10 — Atualizar pet com dados válidos
 

@@ -289,7 +289,7 @@ em 2026-11-15 na `4.0.2` republicada em 2026-11-14 (digest `sha256:daba846d…`)
 
 ## Observações
 
-Diferenças que não quebram o funcionamento, mas ficam registradas para a fase 5 (contrato).
+Diferenças que não quebram o funcionamento, mas ficam registradas.
 
 ### OBS-01 · Contrato documenta 200 como sucesso, mas a API devolve 201 ou 204
 
@@ -309,3 +309,16 @@ Diferenças que não quebram o funcionamento, mas ficam registradas para a fase 
   a devolver, e o banco recebe a mudança certa. O defeito está na documentação, que não descreve o que a API faz.
 - **Efeito nos testes:** quem seguir o contrato e esperar `200` vai ver o teste falhar. Os testes conferem o
   status que a API devolve e que é o correto; na fase 5, a validação de contrato deve apontar essa diferença.
+
+### OBS-02 · Pet com tipo inexistente só é recusado depois de chegar ao banco
+
+- **Passos:** `docker compose down -v` → `up -d --wait` → contar as linhas de `pets` e `types` →
+  `POST /api/owners/1/pets` com um pet válido e `type.id` igual a `7`, o maior id de `types` + 1 → contar de novo.
+- **Obtido:** `404`, com `"title": "DataIntegrityViolationException"` e `"detail": "The requested resource could not
+  be processed due to a data constraint violation"`. O log mostra `null value in column "type_id" of relation "pets"
+  violates not-null constraint`: a API não encontra o tipo, tenta gravar o pet com `type_id` nulo e o banco recusa.
+- **Evidência no banco:** `pets` continua com 13 linhas, `types` com 6, e o tipo `7` não é criado. Reproduzido do zero
+  em 2026-11-18, na imagem `4.0.2` (digest `sha256:daba846d…`).
+- **Por que não é bug:** o `404` está no contrato, atende ao `CT-API-PETS-09` e nenhum dado é gravado.
+- **Ponto de atenção:** quem protege o dado é a restrição do banco, não uma validação da API. A resposta não diz que
+  o problema é o tipo e expõe o nome da exceção.
