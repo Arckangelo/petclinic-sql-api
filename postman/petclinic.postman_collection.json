@@ -791,6 +791,44 @@
           "response": []
         },
         {
+          "name": "CT-API-OWNERS-09",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Cria o dono que este teste vai apagar e conta os donos depois disso\nconst base = pm.environment.get(\"baseUrl\");\nconst owner = {\n  firstName: \"Clara\",\n  lastName: \"Lima\",\n  address: \"Rua do Sol, 30\",\n  city: \"Olinda\",\n  telephone: \"8199990009\"\n};\n\npm.sendRequest({\n  url: base + \"/owners\",\n  method: \"POST\",\n  header: { \"Content-Type\": \"application/json\" },\n  body: { mode: \"raw\", raw: JSON.stringify(owner) }\n}, (err, res) => {\n  if (err) throw err;\n  if (res.code !== 201) throw new Error(\"Preparação falhou: POST do dono devolveu \" + res.code);\n  pm.collectionVariables.set(\"deleteOwnerId\", res.json().id);\n\n  pm.sendRequest(base + \"/owners\", (listErr, listRes) => {\n    if (listErr) throw listErr;\n    pm.collectionVariables.set(\"ownersCountBefore\", listRes.json().length);\n  });\n});\n"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const base = pm.environment.get(\"baseUrl\");\nconst ownerId = Number(pm.collectionVariables.get(\"deleteOwnerId\"));\nconst countBefore = Number(pm.collectionVariables.get(\"ownersCountBefore\"));\n\n// Aqui 404 é falha: o dono acabou de ser criado e tem de ser apagado de verdade\npm.test(\"status 204\", () => pm.response.to.have.status(204));\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\npm.sendRequest(base + \"/owners/\" + ownerId, (err, res) => {\n  pm.test(\"dono não existe mais (GET devolve 404)\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(404);\n  });\n});\n\n// Só este dono pode ter saído da lista\npm.sendRequest(base + \"/owners\", (err, res) => {\n  pm.test(\"lista tem um dono a menos, sem o dono apagado\", () => {\n    pm.expect(err).to.be.null;\n    const ids = res.json().map((o) => o.id);\n    pm.expect(ids).to.have.lengthOf(countBefore - 1);\n    pm.expect(ids).to.not.include(ownerId);\n  });\n});\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/owners/{{deleteOwnerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners",
+                "{{deleteOwnerId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "CT-API-OWNERS-13a",
           "event": [
             {
@@ -1491,6 +1529,35 @@
           "response": []
         },
         {
+          "name": "Limpeza: CT-API-OWNERS-09",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// URL já com o id real (ex.: http://localhost:9966/petclinic/api/owners/21)\nconst url = pm.variables.replaceIn(pm.request.url.toString());\n\n// \"Já removido\" também é sucesso para uma limpeza\npm.test(\"dono apagado ou já removido (204 ou 404)\", () => {\n  pm.expect(pm.response.code).to.be.oneOf([204, 404]);\n});\n\n// Confere que o dono não existe mais\npm.sendRequest(url, (err, res) => {\n  pm.test(\"dono não existe mais (GET devolve 404)\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(404);\n  });\n});\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/owners/{{deleteOwnerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners",
+                "{{deleteOwnerId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "Limpeza: CT-API-OWNERS-13b",
           "event": [
             {
@@ -1748,6 +1815,10 @@
     },
     {
       "key": "lastNameMinOwnerId",
+      "value": ""
+    },
+    {
+      "key": "deleteOwnerId",
       "value": ""
     }
   ]
