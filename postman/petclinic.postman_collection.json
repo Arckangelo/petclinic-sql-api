@@ -1815,6 +1815,54 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "CT-API-PETS-03a",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Quantos pets existem antes do POST\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/pets\", (err, res) => {\n  if (err) throw err;\n  pm.collectionVariables.set(\"petsCountBefore\", res.json().length);\n});\n"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const sent = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));\nconst countBefore = Number(pm.collectionVariables.get(\"petsCountBefore\"));\n\npm.test(\"nome enviado está vazio\", () => {\n  pm.expect(sent.name).to.eql(\"\");\n});\n\npm.test(\"status 400\", () => pm.response.to.have.status(400));\n\n// O 400 tem de ser pelo nome, não por outro campo\npm.test(\"erro aponta o campo name com o valor enviado\", () => {\n  const errors = pm.response.json().schemaValidationErrors;\n  pm.expect(errors, \"lista de erros de validação\").to.be.an(\"array\").and.not.empty;\n  errors.forEach((e) => {\n    pm.expect(e.field).to.eql(\"name\");\n    pm.expect(e.rejectedValue).to.eql(sent.name);\n  });\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// Nenhum pet pode ter sido criado\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/pets\", (err, res) => {\n  pm.test(\"quantidade de pets não mudou\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.json().length).to.eql(countBefore);\n  });\n});\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"\",\n    \"birthDate\": \"2020-05-10\",\n    \"type\": {\n        \"id\": {{petTypeId}},\n        \"name\": \"{{petTypeName}}\"\n    }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/owners/{{ownerId}}/pets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners",
+                "{{ownerId}}",
+                "pets"
+              ]
+            }
+          },
+          "response": []
         }
       ]
     },
