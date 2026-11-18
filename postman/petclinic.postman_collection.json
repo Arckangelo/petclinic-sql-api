@@ -2094,6 +2094,150 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "CT-API-PETS-06a",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Quantos pets existem antes do POST\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/pets\", (err, res) => {\n  if (err) throw err;\n  pm.collectionVariables.set(\"petsCountBefore\", res.json().length);\n});\n"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Data de 50 anos atrás em UTC, o fuso da API\nfunction oldestAllowedDate() {\n  const now = new Date();\n  const month = now.getUTCMonth();\n  const limit = new Date(Date.UTC(now.getUTCFullYear() - 50, month, now.getUTCDate()));\n  // 29 de fevereiro vira 28 quando o ano do limite não é bissexto\n  if (limit.getUTCMonth() !== month) limit.setUTCDate(0);\n  return limit;\n}\n\nconst sent = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));\nconst countBefore = Number(pm.collectionVariables.get(\"petsCountBefore\"));\n\npm.test(\"data enviada é anterior ao limite de 50 anos\", () => {\n  pm.expect(sent.birthDate < oldestAllowedDate().toISOString().slice(0, 10), sent.birthDate).to.be.true;\n});\n\npm.test(\"status 400\", () => pm.response.to.have.status(400));\n\n// O 400 tem de ser pela data, não por outro campo\npm.test(\"erro aponta o campo birthDate com o valor enviado\", () => {\n  const errors = pm.response.json().schemaValidationErrors;\n  pm.expect(errors, \"lista de erros de validação\").to.be.an(\"array\").and.not.empty;\n  errors.forEach((e) => {\n    pm.expect(e.field).to.eql(\"birthDate\");\n    pm.expect(e.rejectedValue).to.eql(sent.birthDate);\n  });\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// Nenhum pet pode ter sido criado\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/pets\", (err, res) => {\n  pm.test(\"quantidade de pets não mudou\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.json().length).to.eql(countBefore);\n  });\n});\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Bidu\",\n    \"birthDate\": \"1800-01-01\",\n    \"type\": {\n        \"id\": {{petTypeId}},\n        \"name\": \"{{petTypeName}}\"\n    }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/owners/{{ownerId}}/pets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners",
+                "{{ownerId}}",
+                "pets"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "CT-API-PETS-06b",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Data de 50 anos atrás em UTC, o fuso da API\nfunction oldestAllowedDate() {\n  const now = new Date();\n  const month = now.getUTCMonth();\n  const limit = new Date(Date.UTC(now.getUTCFullYear() - 50, month, now.getUTCDate()));\n  // 29 de fevereiro vira 28 quando o ano do limite não é bissexto\n  if (limit.getUTCMonth() !== month) limit.setUTCDate(0);\n  return limit;\n}\n\npm.collectionVariables.set(\"petBirthDate\", oldestAllowedDate().toISOString().slice(0, 10));\n"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Data de 50 anos atrás em UTC, o fuso da API\nfunction oldestAllowedDate() {\n  const now = new Date();\n  const month = now.getUTCMonth();\n  const limit = new Date(Date.UTC(now.getUTCFullYear() - 50, month, now.getUTCDate()));\n  // 29 de fevereiro vira 28 quando o ano do limite não é bissexto\n  if (limit.getUTCMonth() !== month) limit.setUTCDate(0);\n  return limit;\n}\n\nconst sent = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));\nconst body = pm.response.json();\n\npm.test(\"data enviada é o limite de 50 anos\", () => {\n  pm.expect(sent.birthDate).to.eql(oldestAllowedDate().toISOString().slice(0, 10));\n});\n\npm.test(\"status 201\", () => pm.response.to.have.status(201));\n\npm.test(\"data na resposta igual à enviada\", () => {\n  pm.expect(body.birthDate).to.eql(sent.birthDate);\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// Confere o que ficou gravado, buscando o pet de novo\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/pets/\" + body.id, (err, res) => {\n  pm.test(\"data gravada igual à enviada\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(200);\n    pm.expect(res.json().birthDate).to.eql(sent.birthDate);\n  });\n});\n\n// Pet criado por este request, para apagar no fim do fluxo\npm.collectionVariables.set(\"oldestPetId\", body.id);\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Bidu\",\n    \"birthDate\": \"{{petBirthDate}}\",\n    \"type\": {\n        \"id\": {{petTypeId}},\n        \"name\": \"{{petTypeName}}\"\n    }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/owners/{{ownerId}}/pets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners",
+                "{{ownerId}}",
+                "pets"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "CT-API-PETS-06c",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Data de 50 anos atrás em UTC, o fuso da API\nfunction oldestAllowedDate() {\n  const now = new Date();\n  const month = now.getUTCMonth();\n  const limit = new Date(Date.UTC(now.getUTCFullYear() - 50, month, now.getUTCDate()));\n  // 29 de fevereiro vira 28 quando o ano do limite não é bissexto\n  if (limit.getUTCMonth() !== month) limit.setUTCDate(0);\n  return limit;\n}\n\n// Um dia antes do limite\nconst tooOld = new Date(oldestAllowedDate().getTime() - 24 * 60 * 60 * 1000);\npm.collectionVariables.set(\"petBirthDate\", tooOld.toISOString().slice(0, 10));\n\n// Quantos pets existem antes do POST\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/pets\", (err, res) => {\n  if (err) throw err;\n  pm.collectionVariables.set(\"petsCountBefore\", res.json().length);\n});\n"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Data de 50 anos atrás em UTC, o fuso da API\nfunction oldestAllowedDate() {\n  const now = new Date();\n  const month = now.getUTCMonth();\n  const limit = new Date(Date.UTC(now.getUTCFullYear() - 50, month, now.getUTCDate()));\n  // 29 de fevereiro vira 28 quando o ano do limite não é bissexto\n  if (limit.getUTCMonth() !== month) limit.setUTCDate(0);\n  return limit;\n}\n\nconst sent = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));\nconst countBefore = Number(pm.collectionVariables.get(\"petsCountBefore\"));\n\npm.test(\"data enviada é anterior ao limite de 50 anos\", () => {\n  pm.expect(sent.birthDate < oldestAllowedDate().toISOString().slice(0, 10), sent.birthDate).to.be.true;\n});\n\npm.test(\"status 400\", () => pm.response.to.have.status(400));\n\n// O 400 tem de ser pela data, não por outro campo\npm.test(\"erro aponta o campo birthDate com o valor enviado\", () => {\n  const errors = pm.response.json().schemaValidationErrors;\n  pm.expect(errors, \"lista de erros de validação\").to.be.an(\"array\").and.not.empty;\n  errors.forEach((e) => {\n    pm.expect(e.field).to.eql(\"birthDate\");\n    pm.expect(e.rejectedValue).to.eql(sent.birthDate);\n  });\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// Nenhum pet pode ter sido criado\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/pets\", (err, res) => {\n  pm.test(\"quantidade de pets não mudou\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.json().length).to.eql(countBefore);\n  });\n});\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Bidu\",\n    \"birthDate\": \"{{petBirthDate}}\",\n    \"type\": {\n        \"id\": {{petTypeId}},\n        \"name\": \"{{petTypeName}}\"\n    }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/owners/{{ownerId}}/pets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners",
+                "{{ownerId}}",
+                "pets"
+              ]
+            }
+          },
+          "response": []
         }
       ]
     },
@@ -2246,6 +2390,35 @@
               "path": [
                 "pets",
                 "{{todayPetId}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// URL já com o id real (ex.: http://localhost:9966/petclinic/api/pets/22)\nconst url = pm.variables.replaceIn(pm.request.url.toString());\n\n// \"Já removido\" também é sucesso para uma limpeza\npm.test(\"pet apagado ou já removido (204 ou 404)\", () => {\n  pm.expect(pm.response.code).to.be.oneOf([204, 404]);\n});\n\n// Confere que o pet não existe mais\npm.sendRequest(url, (err, res) => {\n  pm.test(\"pet não existe mais (GET devolve 404)\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(404);\n  });\n});\n"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Limpeza: CT-API-PETS-06b",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/pets/{{oldestPetId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pets",
+                "{{oldestPetId}}"
               ]
             }
           },
@@ -2779,6 +2952,10 @@
     },
     {
       "key": "todayPetId",
+      "value": ""
+    },
+    {
+      "key": "oldestPetId",
       "value": ""
     }
   ]

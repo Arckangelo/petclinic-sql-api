@@ -345,13 +345,13 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Módulo / Área** | API › Pets › Criação |
 | **Tipo de teste** | Funcional – validação (valor-limite) |
 | **Prioridade** | Baixa |
-| **Objetivo** | Garantir que a API recusa uma data de nascimento sem sentido para um pet. |
+| **Objetivo** | Garantir que a API aceita pet com até 50 anos e recusa data de nascimento mais antiga. |
 | **Pré-condições** | Dono padrão e tipo criados via API. |
-| **Dados de teste** | birthDate = 1800-01-01. |
-| **Passos** | 1. Enviar POST /api/owners/{ownerId}/pets.<br>2. Verificar a resposta e o banco. |
-| **Resultado esperado** | Status 400 e nenhum pet novo. |
+| **Dados de teste** | birthDate = 1800-01-01, exatamente 50 anos atrás e 50 anos e 1 dia atrás (datas calculadas em UTC na hora do teste). |
+| **Passos** | 1. Para cada data, enviar POST /api/owners/{ownerId}/pets.<br>2. Verificar a resposta e o banco. |
+| **Resultado esperado** | Exatamente 50 anos: status 201 e data gravada igual.<br>1800-01-01 e 50 anos e 1 dia: status 400 e nenhum pet novo. |
 | **Status** | Não executado |
-| **Observações** | Dicionário: o banco aceita 1800-01-01.<br>Regra a confirmar: a data mínima aceita (o valor-limite exato) precisa ser definida antes de automatizar. O `populateDB` já tem pets de 31 anos (Samantha e Max, ids 7 e 8, nascidos em 1995-09-04; `sql/03_pets_invalid_birth_date.sql`): um limite que os torne inválidos deixa dados existentes fora da regra. |
+| **Observações** | Dicionário: o banco aceita 1800-01-01.<br>O contrato não limita a data, mas a API responde `Birth date cannot be older than 50 years` (confirmado em 2026-11-18; 1976-11-18 foi aceito e 1976-11-17, recusado). Os pets de 1995-09-04 do `populateDB` estão dentro do limite.<br>Na coleção do Postman: `CT-API-PETS-06a`, `06b` e `06c`. |
 
 #### CT-API-PETS-07 — Data de nascimento inexistente ou fora do formato ISO
 
