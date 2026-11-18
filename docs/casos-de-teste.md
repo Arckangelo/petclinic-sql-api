@@ -185,7 +185,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Passos** | 1. Guardar os totais de donos, pets e visitas.<br>2. Enviar DELETE /api/owners/{id}.<br>3. Verificar a resposta.<br>4. Conferir no banco o dono, o pet, a visita e os totais. |
 | **Resultado esperado** | Passo 3: status 204.<br>Passo 4: dono, pet e visita não existem mais, e cada total tem exatamente um registro a menos. |
 | **Status** | Não executado |
-| **Observações** | Regra adotada em 2026-11-18: apagar dono, pets e visitas juntos. O contrato não diz o que acontece com os pets nem prevê 409, e esse é o comportamento observado da API. A chave estrangeira `pets_owner_id_fkey` recusaria a exclusão no banco, então quem remove os registros é a API.<br>O tipo do pet fica de fora: é cobrado no CT-BUGS-OWNER-DELETE-01 (BUG-03). Com tipo compartilhado, vale o CT-BUGS-OWNER-DELETE-02.<br>Na coleção do Postman: `CT-API-OWNERS-10`. |
+| **Observações** | Regra adotada em 2026-11-18: apagar dono, pets e visitas juntos. O contrato não diz o que acontece com os pets nem prevê 409, e esse é o comportamento observado da API. A chave estrangeira `pets_owner_id_fkey` recusaria a exclusão no banco, então quem remove os registros é a API.<br>O tipo do pet fica de fora: é cobrado no CT-BUG-03-01 (BUG-03). Com tipo compartilhado, vale o CT-BUG-03-02.<br>Na coleção do Postman: `CT-API-OWNERS-10`. |
 
 #### CT-API-OWNERS-11 — Consultar dono inexistente
 
@@ -199,7 +199,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Passos** | 1. Enviar GET /api/owners/{id inexistente}.<br>2. Verificar a resposta. |
 | **Resultado esperado** | Status 404. |
 | **Status** | Não executado |
-| **Observações** | Id não numérico é o BUG-01 (CT-BUGS-HTTP-STATUS-01). |
+| **Observações** | Id não numérico é o BUG-01 (CT-BUG-01-01). |
 
 #### CT-API-OWNERS-12 — Buscar donos por sobrenome
 
@@ -309,7 +309,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Passos** | 1. Para cada nome, enviar POST /api/owners/{ownerId}/pets.<br>2. Verificar a resposta e os pets do dono no banco. |
 | **Resultado esperado** | Status 400 e zero pets. |
 | **Status** | Não executado |
-| **Observações** | Dicionário: o banco aceita nome vazio, mesmo com NOT NULL. O contrato barra `''` (minLength 1), mas não `'   '`.<br>Hoje `'   '` é aceito: é o BUG-06 (CT-BUGS-PET-NAME-01). Na coleção do Postman entra só `''` (`CT-API-PETS-03a`), para ela continuar sem falhas conhecidas. |
+| **Observações** | Dicionário: o banco aceita nome vazio, mesmo com NOT NULL. O contrato barra `''` (minLength 1), mas não `'   '`.<br>Hoje `'   '` é aceito: é o BUG-06 (CT-BUG-06-01). Na coleção do Postman entra só `''` (`CT-API-PETS-03a`), para ela continuar sem falhas conhecidas. |
 
 #### CT-API-PETS-04 — Nome do pet no limite de 30 caracteres
 
@@ -368,7 +368,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Passos** | 1. Para cada data, enviar POST /api/owners/{ownerId}/pets.<br>2. Verificar a resposta e o banco. |
 | **Resultado esperado** | Status 400 em todos e nenhum pet novo. |
 | **Status** | Não executado |
-| **Observações** | Dicionário: o banco recusa 2020-02-30, mas lê `04/03/2010` como 3 de abril (DateStyle MDY). A API não pode repassar a data como texto ao banco.<br>Hoje os três valores respondem 500 e nenhum pet é criado: é o BUG-08 (CT-BUGS-REQUEST-BODY-01). Por isso este caso não entra na coleção do Postman, que continua sem falhas conhecidas. |
+| **Observações** | Dicionário: o banco recusa 2020-02-30, mas lê `04/03/2010` como 3 de abril (DateStyle MDY). A API não pode repassar a data como texto ao banco.<br>Hoje os três valores respondem 500 e nenhum pet é criado: é o BUG-08 (CT-BUG-08-01). Por isso este caso não entra na coleção do Postman, que continua sem falhas conhecidas. |
 
 #### CT-API-PETS-08 — Criar pet para dono inexistente
 
@@ -383,7 +383,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Passos** | 1. Contar as linhas de `pets`.<br>2. Enviar POST /api/owners/{ownerId inexistente}/pets.<br>3. Verificar a resposta e contar de novo. |
 | **Resultado esperado** | Status 404 e mesma contagem. |
 | **Status** | Não executado |
-| **Observações** | Dicionário: a chave `pets_owner_id_fkey` recusa no banco; a API precisa barrar antes, sem 500.<br>Vale para id que respeita o contrato. Id negativo responde 500: é o BUG-09 (CT-BUGS-PATH-ID-01). |
+| **Observações** | Dicionário: a chave `pets_owner_id_fkey` recusa no banco; a API precisa barrar antes, sem 500.<br>Vale para id que respeita o contrato. Id negativo responde 500: é o BUG-09 (CT-BUG-09-01). |
 
 #### CT-API-PETS-09 — Criar pet com tipo inexistente
 
@@ -761,7 +761,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Passos** | 1. Enviar DELETE /api/pettypes/{id}.<br>2. Verificar a resposta e o banco. |
 | **Resultado esperado** | Status 4xx (409); o tipo e o pet continuam no banco, com o mesmo type_id. |
 | **Status** | Não executado |
-| **Observações** | Dicionário: a chave `pets_type_id_fkey` recusa no banco. Um 500 indica que a regra ficou só no banco.<br>Hoje a API responde 204 e apaga o tipo, os pets e as visitas: é o BUG-07 (CT-BUGS-PET-TYPE-DELETE-01). O contrato não documenta 409. |
+| **Observações** | Dicionário: a chave `pets_type_id_fkey` recusa no banco. Um 500 indica que a regra ficou só no banco.<br>Hoje a API responde 204 e apaga o tipo, os pets e as visitas: é o BUG-07 (CT-BUG-07-01). O contrato não documenta 409. |
 
 ### tests/api/test_specialties.py
 
@@ -1207,7 +1207,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 
 ### tests/api/known_bugs/test_http_status.py
 
-#### CT-BUGS-HTTP-STATUS-01 — [BUG-01] Id de dono não numérico responde 400
+#### CT-BUG-01-01 — [BUG-01] Id de dono não numérico responde 400
 
 | Campo | Descrição |
 |---|---|
@@ -1225,7 +1225,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 
 ### tests/api/known_bugs/test_schema_indexes.py
 
-#### CT-BUGS-SCHEMA-INDEXES-01 — [BUG-02] Reiniciar a API não duplica os índices do banco
+#### CT-BUG-02-01 — [BUG-02] Reiniciar a API não duplica os índices do banco
 
 | Campo | Descrição |
 |---|---|
@@ -1244,7 +1244,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 
 ### tests/api/known_bugs/test_owner_delete.py
 
-#### CT-BUGS-OWNER-DELETE-01 — [BUG-03] Apagar dono não apaga o tipo do pet
+#### CT-BUG-03-01 — [BUG-03] Apagar dono não apaga o tipo do pet
 
 | Campo | Descrição |
 |---|---|
@@ -1261,7 +1261,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Status** | Não executado |
 | **Observações** | Reproduzido à mão do zero em 2026-11-14; o teste ainda não existe. As chaves estrangeiras de `pets` não têm `ON DELETE CASCADE`, então quem apaga o tipo é a API. `DELETE /api/pets/{petId}` não apaga o tipo. Teardown: tipo, se ainda existir; cada remoção aceita "já removido". |
 
-#### CT-BUGS-OWNER-DELETE-02 — [BUG-03] Dono com pet de tipo compartilhado não recebe 404
+#### CT-BUG-03-02 — [BUG-03] Dono com pet de tipo compartilhado não recebe 404
 
 | Campo | Descrição |
 |---|---|
@@ -1280,7 +1280,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 
 ### tests/api/known_bugs/test_visit_create.py
 
-#### CT-BUGS-VISIT-CREATE-01 — [BUG-04] Criar visita com id no corpo não altera uma visita existente
+#### CT-BUG-04-01 — [BUG-04] Criar visita com id no corpo não altera uma visita existente
 
 | Campo | Descrição |
 |---|---|
@@ -1299,7 +1299,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 
 ### tests/api/known_bugs/test_owner_search.py
 
-#### CT-BUGS-OWNER-SEARCH-01 — [BUG-05] Busca de donos sem resultado responde 200 com lista vazia
+#### CT-BUG-05-01 — [BUG-05] Busca de donos sem resultado responde 200 com lista vazia
 
 | Campo | Descrição |
 |---|---|
@@ -1318,7 +1318,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 
 ### tests/api/known_bugs/test_pet_name.py
 
-#### CT-BUGS-PET-NAME-01 — [BUG-06] Nome de pet só com espaços é recusado
+#### CT-BUG-06-01 — [BUG-06] Nome de pet só com espaços é recusado
 
 | Campo | Descrição |
 |---|---|
@@ -1337,7 +1337,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 
 ### tests/api/known_bugs/test_pet_type_delete.py
 
-#### CT-BUGS-PET-TYPE-DELETE-01 — [BUG-07] Apagar tipo em uso não apaga pets nem visitas
+#### CT-BUG-07-01 — [BUG-07] Apagar tipo em uso não apaga pets nem visitas
 
 | Campo | Descrição |
 |---|---|
@@ -1356,7 +1356,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 
 ### tests/api/known_bugs/test_request_body.py
 
-#### CT-BUGS-REQUEST-BODY-01 — [BUG-08] Corpo ilegível responde 400
+#### CT-BUG-08-01 — [BUG-08] Corpo ilegível responde 400
 
 | Campo | Descrição |
 |---|---|
@@ -1375,7 +1375,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 
 ### tests/api/known_bugs/test_path_id.py
 
-#### CT-BUGS-PATH-ID-01 — [BUG-09] Id negativo na URL responde 400
+#### CT-BUG-09-01 — [BUG-09] Id negativo na URL responde 400
 
 | Campo | Descrição |
 |---|---|
