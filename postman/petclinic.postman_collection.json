@@ -355,7 +355,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const sent = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));\nconst body = pm.response.json();\n\n// Troque XXX pelo status que a API devolveu quando você rodou (o contrato diz 200)\npm.test(\"status 201\", () => pm.response.to.have.status(201));\n\npm.test(\"nome igual ao enviado\", () => {\n  pm.expect(body.name).to.eql(sent.name);\n});\n\npm.test(\"id gerado é um número\", () => {\n  pm.expect(body.id).to.be.a(\"number\");\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// Usados pelo CT-API-PETS-01 e pela limpeza\npm.collectionVariables.set(\"petTypeId\", body.id);\npm.collectionVariables.set(\"petTypeName\", sent.name);\n"
+                  "const sent = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));\nconst body = pm.response.json();\n\npm.test(\"status 201\", () => pm.response.to.have.status(201));\n\npm.test(\"nome igual ao enviado\", () => {\n  pm.expect(body.name).to.eql(sent.name);\n});\n\npm.test(\"id gerado é um número\", () => {\n  pm.expect(body.id).to.be.a(\"number\");\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// Usados pelo CT-API-PETS-01 e pela limpeza\npm.collectionVariables.set(\"petTypeId\", body.id);\npm.collectionVariables.set(\"petTypeName\", sent.name);\n"
                 ]
               }
             }
