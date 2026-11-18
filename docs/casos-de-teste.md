@@ -1,6 +1,6 @@
 # Casos de teste — petclinic-sql-api
 
-Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um por teste a automatizar, identificados pelo ID CT que vai no comentário acima do teste no código. Os arquivos de cada seção são os previstos em `tests/api/`; nenhum existe ainda. A exceção é a seção Postman, que já roda na coleção. Total: 83 casos.
+Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um por teste a automatizar, identificados pelo ID CT que vai no comentário acima do teste no código. Os arquivos de cada seção são os previstos em `tests/api/`; nenhum existe ainda. A exceção é a seção Postman, que já roda na coleção. Total: 84 casos.
 
 **Notas gerais**
 
@@ -31,7 +31,8 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | Bugs conhecidos | [tests/api/known_bugs/test_owner_delete.py](#testsapiknown_bugstest_owner_deletepy) | 2 |
 | Bugs conhecidos | [tests/api/known_bugs/test_visit_create.py](#testsapiknown_bugstest_visit_createpy) | 1 |
 | Bugs conhecidos | [tests/api/known_bugs/test_owner_search.py](#testsapiknown_bugstest_owner_searchpy) | 1 |
-| **Total** | | **83** |
+| Bugs conhecidos | [tests/api/known_bugs/test_pet_name.py](#testsapiknown_bugstest_pet_namepy) | 1 |
+| **Total** | | **84** |
 
 ## API
 
@@ -305,7 +306,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Passos** | 1. Para cada nome, enviar POST /api/owners/{ownerId}/pets.<br>2. Verificar a resposta e os pets do dono no banco. |
 | **Resultado esperado** | Status 400 e zero pets. |
 | **Status** | Não executado |
-| **Observações** | Dicionário: o banco aceita nome vazio, mesmo com NOT NULL. O contrato barra `''` (minLength 1), mas não `'   '`. |
+| **Observações** | Dicionário: o banco aceita nome vazio, mesmo com NOT NULL. O contrato barra `''` (minLength 1), mas não `'   '`.<br>Hoje `'   '` é aceito: é o BUG-06 (CT-BUGS-PET-NAME-01). Na coleção do Postman entra só `''` (`CT-API-PETS-03a`), para ela continuar sem falhas conhecidas. |
 
 #### CT-API-PETS-04 — Nome do pet no limite de 30 caracteres
 
@@ -1311,3 +1312,22 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Resultado obtido** | Status 404 com corpo vazio (BUGS.md). |
 | **Status** | Não executado |
 | **Observações** | Reproduzido do zero em 2026-11-18. O contrato de GET /api/owners documenta 200, 304 e 500, sem 404. O teste não cria dados, então não precisa de limpeza. |
+
+### tests/api/known_bugs/test_pet_name.py
+
+#### CT-BUGS-PET-NAME-01 — [BUG-06] Nome de pet só com espaços é recusado
+
+| Campo | Descrição |
+|---|---|
+| **Módulo / Área** | Bugs conhecidos › API › Pets › Criação |
+| **Tipo de teste** | Funcional – negativo (validação) |
+| **Prioridade** | Média |
+| **Bug relacionado** | BUG-06 |
+| **Objetivo** | Garantir que a API não grava pet com nome sem conteúdo visível. |
+| **Pré-condições** | Dono e tipo criados via API. |
+| **Dados de teste** | name = `'   '`. |
+| **Passos** | 1. Contar os pets no banco.<br>2. Enviar POST /api/owners/{ownerId}/pets.<br>3. Verificar a resposta.<br>4. Contar os pets de novo. |
+| **Resultado esperado** | Passo 3: status 400 apontando o campo `name`.<br>Passo 4: mesma contagem do passo 1. |
+| **Resultado obtido** | Passo 3: status 201 com o nome enviado. Passo 4: um pet a mais, com o nome só de espaços (BUGS.md). |
+| **Status** | Não executado |
+| **Observações** | Reproduzido do zero em 2026-11-18. O contrato não proíbe o valor (`name` não tem `pattern`); a regra vem da consistência com os nomes de dono e de tipo. Teardown: pet, dono e tipo; cada remoção aceita "já removido". |

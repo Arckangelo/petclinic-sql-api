@@ -6,7 +6,7 @@ detalhes de cada um: passos, esperado, obtido, evidência no banco e, quando con
 Ambiente: `springcommunity/spring-petclinic-rest:latest` (4.0.2) com `postgres:16.3`, via `docker compose`. Todos
 reproduzidos do zero (`docker compose down -v` e `up -d --wait`). BUG-01, BUG-02 e BUG-03 foram reproduzidos de novo
 em 2026-11-15 na `4.0.2` republicada em 2026-11-14 (digest `sha256:daba846d…`); o BUG-04 foi reproduzido nela em
-2026-11-17 e o BUG-05, em 2026-11-18.
+2026-11-17, e o BUG-05 e o BUG-06, em 2026-11-18.
 
 | Bug | Resumo | Impacto | Issue |
 |:---|:---|:---|:---|
@@ -15,6 +15,7 @@ em 2026-11-15 na `4.0.2` republicada em 2026-11-14 (digest `sha256:daba846d…`)
 | [BUG-03](#bug-03--apagar-um-dono-apaga-também-o-tipo-do-pet-dele) | Apagar dono apaga também o tipo do pet | alto | [#3](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/3) |
 | [BUG-04](#bug-04--criar-visita-com-id-no-corpo-sobrescreve-uma-visita-que-já-existe) | POST de visita com `id` sobrescreve visita existente | alto | [#4](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/4) |
 | [BUG-05](#bug-05--busca-de-donos-sem-resultado-responde-404-em-vez-de-200-com-lista-vazia) | Busca de donos sem resultado responde 404 em vez de lista vazia | baixo a médio | [#5](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/5) |
+| [BUG-06](#bug-06--nome-de-pet-só-com-espaços-é-aceito-e-gravado) | Nome de pet só com espaços é aceito e gravado | baixo a médio | [#6](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/6) |
 
 ## BUG-01 · API responde 500 em vez de 400 quando o id do dono não é numérico
 
@@ -167,6 +168,32 @@ em 2026-11-15 na `4.0.2` republicada em 2026-11-14 (digest `sha256:daba846d…`)
   sugere transformar lista vazia em `404`. É um indício: a lógica do método não foi lida.
 - **Impacto:** baixo a médio. Nenhum dado é afetado, mas o cliente precisa tratar "nenhum resultado" como erro e não
   distingue esse caso de uma URL errada.
+
+## BUG-06 · Nome de pet só com espaços é aceito e gravado
+
+- **Issue:** [#6](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/6)
+- **Passos:** `docker compose down -v` → `up -d --wait` → criar um dono e um tipo →
+  `POST /api/owners/{ownerId}/pets` com `"name": "   "`, uma data e o tipo → conferir o pet no banco e com
+  `GET /api/pets/{petId}`.
+- **Esperado:** `400 Bad Request` apontando o campo `name`, sem gravar o pet, como acontece com `""` e com o nome do
+  dono só com espaços (`CT-API-OWNERS-05`).
+- **Obtido:** `201 Created`, com `"name": "   "` na resposta, e uma linha nova em `pets`.
+
+  | Campo em `pets` | Valor gravado |
+  |:---|:---|
+  | `id` | 14 |
+  | `name` | 3 espaços (tamanho 3; vazio depois de tirar os espaços) |
+  | `birth_date` | 2020-05-10 |
+  | `type_id` / `owner_id` | 7 / 11 (criados no teste) |
+
+  Total de pets: 13 antes e 14 depois. Um espaço e um tab também são aceitos e gravados.
+- **Evidência no banco:** a linha do pet criado, com o nome só de espaços, e a contagem de `pets` antes e depois.
+  Reproduzido do zero em 2026-11-18, na imagem `4.0.2` (digest `sha256:daba846d…`).
+- **Relação com o contrato:** `name` de `PetFields` só tem `minLength: 1` e `maxLength: 30`, sem `pattern`. O contrato
+  não proíbe o valor: o defeito é de regra de negócio e de consistência, porque o nome do dono e o nome do tipo de
+  pet têm `pattern` e recusam esse tipo de valor.
+- **Impacto:** baixo a médio. O pet fica sem nome visível nas telas e nos relatórios. O banco não impede: a coluna é
+  `NOT NULL`, mas aceita texto só com espaços.
 
 ## Observações
 
