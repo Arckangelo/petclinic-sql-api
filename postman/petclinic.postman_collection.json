@@ -829,6 +829,44 @@
           "response": []
         },
         {
+          "name": "CT-API-OWNERS-10",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Cria tipo, dono, pet e visita deste teste e guarda os totais depois disso\nconst base = pm.environment.get(\"baseUrl\");\n\nfunction post(path, data, next) {\n  pm.sendRequest({\n    url: base + path,\n    method: \"POST\",\n    header: { \"Content-Type\": \"application/json\" },\n    body: { mode: \"raw\", raw: JSON.stringify(data) }\n  }, (err, res) => {\n    if (err) throw err;\n    if (res.code !== 201) throw new Error(\"Preparação falhou: POST \" + path + \" devolveu \" + res.code);\n    next(res.json());\n  });\n}\n\nfunction saveCounts(resources, counts) {\n  if (resources.length === 0) {\n    pm.collectionVariables.set(\"cascadeCountsBefore\", JSON.stringify(counts));\n    return;\n  }\n  pm.sendRequest(base + \"/\" + resources[0], (err, res) => {\n    if (err) throw err;\n    counts[resources[0]] = res.json().length;\n    saveCounts(resources.slice(1), counts);\n  });\n}\n\npost(\"/pettypes\", { name: \"tartaruga\" }, (type) => {\n  pm.collectionVariables.set(\"cascadeTypeId\", type.id);\n  const owner = { firstName: \"Clara\", lastName: \"Lima\", address: \"Rua do Sol, 30\", city: \"Olinda\", telephone: \"8199990010\" };\n  post(\"/owners\", owner, (createdOwner) => {\n    const ownerId = createdOwner.id;\n    pm.collectionVariables.set(\"cascadeOwnerId\", ownerId);\n    const pet = { name: \"Rex\", birthDate: \"2020-05-10\", type: { id: type.id, name: type.name } };\n    post(\"/owners/\" + ownerId + \"/pets\", pet, (createdPet) => {\n      pm.collectionVariables.set(\"cascadePetId\", createdPet.id);\n      const visit = { date: \"2026-11-01\", description: \"Consulta de rotina\" };\n      post(\"/owners/\" + ownerId + \"/pets/\" + createdPet.id + \"/visits\", visit, (createdVisit) => {\n        pm.collectionVariables.set(\"cascadeVisitId\", createdVisit.id);\n        saveCounts([\"owners\", \"pets\", \"visits\"], {});\n      });\n    });\n  });\n});\n"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const base = pm.environment.get(\"baseUrl\");\nconst before = JSON.parse(pm.collectionVariables.get(\"cascadeCountsBefore\"));\nconst targets = {\n  owners: Number(pm.collectionVariables.get(\"cascadeOwnerId\")),\n  pets: Number(pm.collectionVariables.get(\"cascadePetId\")),\n  visits: Number(pm.collectionVariables.get(\"cascadeVisitId\"))\n};\n\npm.test(\"status 204\", () => pm.response.to.have.status(204));\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// Regra adotada: dono, pets e visitas saem juntos, sem remoção pela metade.\n// O tipo do pet fica de fora: é cobrado no caso do BUG-03.\nObject.keys(targets).forEach((resource) => {\n  pm.sendRequest(base + \"/\" + resource + \"/\" + targets[resource], (err, res) => {\n    pm.test(resource + \": registro não existe mais (GET devolve 404)\", () => {\n      pm.expect(err).to.be.null;\n      pm.expect(res.code).to.eql(404);\n    });\n  });\n\n  pm.sendRequest(base + \"/\" + resource, (err, res) => {\n    pm.test(resource + \": lista tem exatamente um registro a menos\", () => {\n      pm.expect(err).to.be.null;\n      pm.expect(res.json().length).to.eql(before[resource] - 1);\n    });\n  });\n});\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/owners/{{cascadeOwnerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners",
+                "{{cascadeOwnerId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "CT-API-OWNERS-13a",
           "event": [
             {
@@ -1558,6 +1596,35 @@
           "response": []
         },
         {
+          "name": "Limpeza: CT-API-OWNERS-10",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Apaga na ordem das chaves estrangeiras: visita, pet, dono e tipo.\n// Numa execução normal, tudo já saiu e os DELETE respondem 404.\nconst base = pm.environment.get(\"baseUrl\");\nconst steps = [\n  { path: \"visits\", id: pm.collectionVariables.get(\"cascadeVisitId\") },\n  { path: \"pets\", id: pm.collectionVariables.get(\"cascadePetId\") },\n  { path: \"owners\", id: pm.collectionVariables.get(\"cascadeOwnerId\") },\n  { path: \"pettypes\", id: pm.collectionVariables.get(\"cascadeTypeId\") }\n];\n\nfunction checkDeleted(code, path) {\n  pm.test(path + \": apagado ou já removido (204 ou 404)\", () => {\n    pm.expect(code).to.be.oneOf([204, 404]);\n  });\n}\n\nfunction confirmGone(index) {\n  const step = steps[index];\n  pm.sendRequest(base + \"/\" + step.path + \"/\" + step.id, (err, res) => {\n    pm.test(step.path + \": não existe mais (GET devolve 404)\", () => {\n      pm.expect(err).to.be.null;\n      pm.expect(res.code).to.eql(404);\n    });\n\n    const next = steps[index + 1];\n    if (!next) return;\n    pm.sendRequest({ url: base + \"/\" + next.path + \"/\" + next.id, method: \"DELETE\" }, (delErr, delRes) => {\n      if (delErr) throw delErr;\n      checkDeleted(delRes.code, next.path);\n      confirmGone(index + 1);\n    });\n  });\n}\n\ncheckDeleted(pm.response.code, steps[0].path);\nconfirmGone(0);\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/visits/{{cascadeVisitId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "visits",
+                "{{cascadeVisitId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "Limpeza: CT-API-OWNERS-13b",
           "event": [
             {
@@ -1819,6 +1886,26 @@
     },
     {
       "key": "deleteOwnerId",
+      "value": ""
+    },
+    {
+      "key": "cascadeOwnerId",
+      "value": ""
+    },
+    {
+      "key": "cascadePetId",
+      "value": ""
+    },
+    {
+      "key": "cascadeTypeId",
+      "value": ""
+    },
+    {
+      "key": "cascadeVisitId",
+      "value": ""
+    },
+    {
+      "key": "cascadeCountsBefore",
       "value": ""
     }
   ]

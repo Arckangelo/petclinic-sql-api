@@ -80,9 +80,8 @@ em 2026-11-15 na `4.0.2` republicada em 2026-11-14 (digest `sha256:daba846d…`)
 - **Passos:** `docker compose down -v` → `up -d --wait` → criar um dono (`POST /api/owners`), um tipo de pet
   (`POST /api/pettypes`) e um pet desse tipo para o dono (`POST /api/owners/{ownerId}/pets`) → conferir no banco
   as três linhas → `DELETE /api/owners/{ownerId}` → conferir no banco de novo.
-- **Esperado:** o tipo de pet continua no banco. Ele é um cadastro geral, não pertence ao dono. Sobre o pet, a regra
-  ainda está a confirmar (ver `CT-API-OWNERS-10`): ou a API recusa apagar dono com pet, ou apaga dono e pets juntos.
-  Em nenhuma das duas o tipo some.
+- **Esperado:** o tipo de pet continua no banco. Ele é um cadastro geral, não pertence ao dono. A regra adotada é
+  apagar dono, pets e visitas juntos (ver `CT-API-OWNERS-10`), e o tipo não faz parte dela.
 - **Obtido:** `204 No Content`, e somem do banco o dono, o pet **e o tipo**.
 
   | Linha | Antes do DELETE | Depois do DELETE |
@@ -112,8 +111,8 @@ em 2026-11-15 na `4.0.2` republicada em 2026-11-14 (digest `sha256:daba846d…`)
   `SpringDataPetRepositoryImpl` apaga com consultas diretas (`DELETE FROM Visit ...` e `DELETE FROM Pet ...`), que
   ignoram as cascatas; por isso ali o tipo fica.
 - **Sugestão de correção:** tirar o `cascade` do campo `type` de `Pet` (deixar só `@ManyToOne`). Um tipo de pet é
-  cadastro compartilhado e não deve nascer nem morrer junto com um pet. Se apagar o dono apaga ou não os pets é a
-  regra a confirmar do `CT-API-OWNERS-10`.
+  cadastro compartilhado e não deve nascer nem morrer junto com um pet. Apagar o dono continua apagando os pets e as
+  visitas dele, como define o `CT-API-OWNERS-10`.
 - **Impacto:** alto. Apagar um dono pode apagar um tipo de pet que outro cadastro usaria depois, e um dono com pet de
   tipo comum (gato, cachorro) nunca pode ser apagado pela API. A resposta `204` parece sucesso: só o banco mostra o
   tipo que sumiu.

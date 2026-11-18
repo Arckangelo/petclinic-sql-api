@@ -174,13 +174,13 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Módulo / Área** | API › Donos › Exclusão |
 | **Tipo de teste** | Funcional – regra de negócio |
 | **Prioridade** | Alta |
-| **Objetivo** | Garantir que a API não apaga um dono que ainda tem pets e que não deixa remoção pela metade. |
-| **Pré-condições** | Dono padrão com um pet e uma visita, criados via API. |
+| **Objetivo** | Garantir que apagar um dono remove junto os pets e as visitas dele, sem deixar remoção pela metade. |
+| **Pré-condições** | Tipo, dono, pet e visita criados via API. |
 | **Dados de teste** | Id do dono criado. |
-| **Passos** | 1. Enviar DELETE /api/owners/{id}.<br>2. Verificar a resposta.<br>3. Conferir no banco o dono, o pet e a visita. |
-| **Resultado esperado** | Passo 2: status 4xx (409).<br>Passo 3: dono, pet e visita continuam no banco, sem alteração. |
+| **Passos** | 1. Guardar os totais de donos, pets e visitas.<br>2. Enviar DELETE /api/owners/{id}.<br>3. Verificar a resposta.<br>4. Conferir no banco o dono, o pet, a visita e os totais. |
+| **Resultado esperado** | Passo 3: status 204.<br>Passo 4: dono, pet e visita não existem mais, e cada total tem exatamente um registro a menos. |
 | **Status** | Não executado |
-| **Observações** | Dicionário: a chave estrangeira `pets_owner_id_fkey` recusa a exclusão no banco.<br>Regra a confirmar: a alternativa é apagar dono, pets e visitas juntos. Em qualquer regra, nunca 500 e nunca remoção parcial. |
+| **Observações** | Regra adotada em 2026-11-18: apagar dono, pets e visitas juntos. O contrato não diz o que acontece com os pets nem prevê 409, e esse é o comportamento observado da API. A chave estrangeira `pets_owner_id_fkey` recusaria a exclusão no banco, então quem remove os registros é a API.<br>O tipo do pet fica de fora: é cobrado no CT-BUGS-OWNER-DELETE-01 (BUG-03). Com tipo compartilhado, vale o CT-BUGS-OWNER-DELETE-02.<br>Na coleção do Postman: `CT-API-OWNERS-10`. |
 
 #### CT-API-OWNERS-11 — Consultar dono inexistente
 
@@ -1268,7 +1268,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Pré-condições** | Tipo de pet usado por dois pets, de dois donos diferentes, tudo criado via API. |
 | **Dados de teste** | Dois donos padrão, um tipo com nome único por execução, um pet desse tipo para cada dono. |
 | **Passos** | 1. Enviar DELETE /api/owners/{id do primeiro dono}.<br>2. Verificar o status e o corpo.<br>3. Conferir no banco os dois donos, os dois pets e o tipo. |
-| **Resultado esperado** | Passo 2: nunca 404 (o dono existe) nem nome de exceção Java no corpo; 409 se a regra for recusar, 2xx se for apagar dono e pets juntos (CT-API-OWNERS-10).<br>Passo 3: o tipo e o segundo dono com o pet dele continuam no banco, sem alteração; sem remoção pela metade. |
+| **Resultado esperado** | Passo 2: status 2xx, porque a regra é apagar dono, pets e visitas juntos (CT-API-OWNERS-10); nunca 404 (o dono existe) nem nome de exceção Java no corpo.<br>Passo 3: o tipo e o segundo dono com o pet dele continuam no banco, sem alteração; sem remoção pela metade. |
 | **Resultado obtido** | Passo 2: status 404 com `"title": "DataIntegrityViolationException"`. Passo 3: nada foi apagado; o log da API mostra a tentativa de apagar o tipo, barrada pela chave `pets_type_id_fkey` (BUGS.md). |
 | **Status** | Não executado |
 | **Observações** | Reproduzido do zero em 2026-11-14 com o tipo `cat` do `populateDB`; o teste deve criar o próprio tipo compartilhado. Teardown: pets, depois donos, depois tipo; cada remoção aceita "já removido". |
