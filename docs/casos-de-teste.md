@@ -1,6 +1,6 @@
 # Casos de teste — petclinic-sql-api
 
-Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um por teste a automatizar, identificados pelo ID CT que vai no comentário acima do teste no código. Os arquivos de cada seção são os previstos em `tests/api/`; nenhum existe ainda. A exceção é a seção Postman, que já roda na coleção. Total: 81 casos.
+Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um por teste a automatizar, identificados pelo ID CT que vai no comentário acima do teste no código. Os arquivos de cada seção são os previstos em `tests/api/`; nenhum existe ainda. A exceção é a seção Postman, que já roda na coleção. Total: 82 casos.
 
 **Notas gerais**
 
@@ -18,7 +18,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 
 | Área | Arquivo | Casos |
 |---|---|---|
-| API | [tests/api/test_owners.py](#testsapitest_ownerspy) | 14 |
+| API | [tests/api/test_owners.py](#testsapitest_ownerspy) | 15 |
 | API | [tests/api/test_pets.py](#testsapitest_petspy) | 13 |
 | API | [tests/api/test_visits.py](#testsapitest_visitspy) | 12 |
 | API | [tests/api/test_pet_types.py](#testsapitest_pet_typespy) | 8 |
@@ -30,7 +30,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | Bugs conhecidos | [tests/api/known_bugs/test_schema_indexes.py](#testsapiknown_bugstest_schema_indexespy) | 1 |
 | Bugs conhecidos | [tests/api/known_bugs/test_owner_delete.py](#testsapiknown_bugstest_owner_deletepy) | 2 |
 | Bugs conhecidos | [tests/api/known_bugs/test_visit_create.py](#testsapiknown_bugstest_visit_createpy) | 1 |
-| **Total** | | **81** |
+| **Total** | | **82** |
 
 ## API
 
@@ -239,6 +239,20 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Resultado esperado** | Status 400, com o erro apontando o campo alterado, e banco intacto. |
 | **Status** | Não executado |
 | **Observações** | O valor tem tamanho válido, para isolar a regra de formato. No banco, `first_name` e `last_name` são `text`, sem restrição de conteúdo: só a API impede o dígito.<br>Na coleção do Postman: `CT-API-OWNERS-14a` e `14b`. |
+
+#### CT-API-OWNERS-15 — Nome e sobrenome com 1 letra
+
+| Campo | Descrição |
+|---|---|
+| **Módulo / Área** | API › Donos › Criação |
+| **Tipo de teste** | Funcional – validação (valor-limite) |
+| **Prioridade** | Média |
+| **Objetivo** | Garantir que o menor tamanho permitido é aceito e gravado sem alteração. |
+| **Dados de teste** | firstName e, depois, lastName com `'A'`; os demais campos válidos. |
+| **Passos** | 1. Para cada campo, enviar POST /api/owners com o dono padrão e o campo alterado.<br>2. Verificar a resposta e o banco. |
+| **Resultado esperado** | Status 201 e valor gravado igual ao enviado, com 1 caractere. |
+| **Status** | Não executado |
+| **Observações** | Limite vem do contrato (1 a 30). É o par do CT-API-OWNERS-05, em que o vazio (0 caracteres) é recusado.<br>Na coleção do Postman: `CT-API-OWNERS-15a` e `15b`. |
 
 ### tests/api/test_pets.py
 

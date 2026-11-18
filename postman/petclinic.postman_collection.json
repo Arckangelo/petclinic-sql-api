@@ -978,6 +978,86 @@
           "response": []
         },
         {
+          "name": "CT-API-OWNERS-15a",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Campo no limite mínimo e variável que guarda o dono para a limpeza\nconst field = \"firstName\";\nconst ownerIdVariable = \"firstNameMinOwnerId\";\n\nconst sent = JSON.parse(pm.request.body.raw);\nconst body = pm.response.json();\n\npm.test(\"valor enviado tem 1 caractere\", () => {\n  pm.expect(sent[field]).to.have.lengthOf(1);\n});\n\npm.test(\"status 201\", () => pm.response.to.have.status(201));\n\npm.test(field + \" na resposta igual ao enviado\", () => {\n  pm.expect(body[field]).to.eql(sent[field]);\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// Confere o que ficou gravado, buscando o dono de novo\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/owners/\" + body.id, (err, res) => {\n  pm.test(field + \" gravado igual ao enviado\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(200);\n    pm.expect(res.json()[field]).to.eql(sent[field]);\n  });\n});\n\n// Dono criado por este request, para apagar no fim do fluxo\npm.collectionVariables.set(ownerIdVariable, body.id);\n"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"firstName\": \"A\",\n    \"lastName\": \"Lima\",\n    \"address\": \"Rua do Sol, 30\",\n    \"city\": \"Olinda\",\n    \"telephone\": \"8199990015\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/owners",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "CT-API-OWNERS-15b",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Campo no limite mínimo e variável que guarda o dono para a limpeza\nconst field = \"lastName\";\nconst ownerIdVariable = \"lastNameMinOwnerId\";\n\nconst sent = JSON.parse(pm.request.body.raw);\nconst body = pm.response.json();\n\npm.test(\"valor enviado tem 1 caractere\", () => {\n  pm.expect(sent[field]).to.have.lengthOf(1);\n});\n\npm.test(\"status 201\", () => pm.response.to.have.status(201));\n\npm.test(field + \" na resposta igual ao enviado\", () => {\n  pm.expect(body[field]).to.eql(sent[field]);\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// Confere o que ficou gravado, buscando o dono de novo\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/owners/\" + body.id, (err, res) => {\n  pm.test(field + \" gravado igual ao enviado\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(200);\n    pm.expect(res.json()[field]).to.eql(sent[field]);\n  });\n});\n\n// Dono criado por este request, para apagar no fim do fluxo\npm.collectionVariables.set(ownerIdVariable, body.id);\n"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"firstName\": \"Clara\",\n    \"lastName\": \"A\",\n    \"address\": \"Rua do Sol, 30\",\n    \"city\": \"Olinda\",\n    \"telephone\": \"8199990015\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/owners",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "CT-API-OWNERS-07",
           "event": [
             {
@@ -1259,35 +1339,6 @@
           "response": []
         },
         {
-          "name": "Limpeza: CT-API-OWNERS-06a",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "// URL já com o id real (ex.: http://localhost:9966/petclinic/api/owners/21)\nconst url = pm.variables.replaceIn(pm.request.url.toString());\n\n// \"Já removido\" também é sucesso para uma limpeza\npm.test(\"dono apagado ou já removido (204 ou 404)\", () => {\n  pm.expect(pm.response.code).to.be.oneOf([204, 404]);\n});\n\n// Confere que o dono não existe mais\npm.sendRequest(url, (err, res) => {\n  pm.test(\"dono não existe mais (GET devolve 404)\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(404);\n  });\n});\n"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "DELETE",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/owners/{{firstNameLimitOwnerId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "owners",
-                "{{firstNameLimitOwnerId}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
           "name": "Limpeza: CT-API-OWNERS-06c",
           "event": [
             {
@@ -1311,6 +1362,35 @@
               "path": [
                 "owners",
                 "{{lastNameLimitOwnerId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Limpeza: CT-API-OWNERS-06a",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// URL já com o id real (ex.: http://localhost:9966/petclinic/api/owners/21)\nconst url = pm.variables.replaceIn(pm.request.url.toString());\n\n// \"Já removido\" também é sucesso para uma limpeza\npm.test(\"dono apagado ou já removido (204 ou 404)\", () => {\n  pm.expect(pm.response.code).to.be.oneOf([204, 404]);\n});\n\n// Confere que o dono não existe mais\npm.sendRequest(url, (err, res) => {\n  pm.test(\"dono não existe mais (GET devolve 404)\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(404);\n  });\n});\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/owners/{{firstNameLimitOwnerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners",
+                "{{firstNameLimitOwnerId}}"
               ]
             }
           },
@@ -1378,6 +1458,64 @@
               "path": [
                 "owners",
                 "{{existingIdOwnerId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Limpeza: CT-API-OWNERS-15b",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// URL já com o id real (ex.: http://localhost:9966/petclinic/api/owners/21)\nconst url = pm.variables.replaceIn(pm.request.url.toString());\n\n// \"Já removido\" também é sucesso para uma limpeza\npm.test(\"dono apagado ou já removido (204 ou 404)\", () => {\n  pm.expect(pm.response.code).to.be.oneOf([204, 404]);\n});\n\n// Confere que o dono não existe mais\npm.sendRequest(url, (err, res) => {\n  pm.test(\"dono não existe mais (GET devolve 404)\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(404);\n  });\n});\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/owners/{{lastNameMinOwnerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners",
+                "{{lastNameMinOwnerId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Limpeza: CT-API-OWNERS-15a",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// URL já com o id real (ex.: http://localhost:9966/petclinic/api/owners/21)\nconst url = pm.variables.replaceIn(pm.request.url.toString());\n\n// \"Já removido\" também é sucesso para uma limpeza\npm.test(\"dono apagado ou já removido (204 ou 404)\", () => {\n  pm.expect(pm.response.code).to.be.oneOf([204, 404]);\n});\n\n// Confere que o dono não existe mais\npm.sendRequest(url, (err, res) => {\n  pm.test(\"dono não existe mais (GET devolve 404)\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(404);\n  });\n});\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/owners/{{firstNameMinOwnerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners",
+                "{{firstNameMinOwnerId}}"
               ]
             }
           },
@@ -1508,6 +1646,14 @@
     },
     {
       "key": "lastNameLimitOwnerId",
+      "value": ""
+    },
+    {
+      "key": "firstNameMinOwnerId",
+      "value": ""
+    },
+    {
+      "key": "lastNameMinOwnerId",
       "value": ""
     }
   ]
