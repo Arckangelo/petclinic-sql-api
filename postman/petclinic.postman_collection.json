@@ -867,6 +867,44 @@
           "response": []
         },
         {
+          "name": "CT-API-OWNERS-11",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Descobre um id que não existe: o maior id atual + 1\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/owners\", (err, res) => {\n  if (err) throw err;\n  const ids = res.json().map((owner) => owner.id);\n  pm.collectionVariables.set(\"nonexistentOwnerId\", Math.max(...ids) + 1);\n});\n"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 404\", () => pm.response.to.have.status(404));\n\npm.test(\"resposta não traz dados de dono\", () => {\n  pm.expect(pm.response.text()).to.not.include(\"firstName\");\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/owners/{{nonexistentOwnerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners",
+                "{{nonexistentOwnerId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "CT-API-OWNERS-13a",
           "event": [
             {
@@ -1906,6 +1944,10 @@
     },
     {
       "key": "cascadeCountsBefore",
+      "value": ""
+    },
+    {
+      "key": "nonexistentOwnerId",
       "value": ""
     }
   ]
