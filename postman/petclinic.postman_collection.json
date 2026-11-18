@@ -2286,6 +2286,54 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "CT-API-PETS-09",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Descobre um id de tipo que não existe: o maior id atual + 1\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/pettypes\", (err, res) => {\n  if (err) throw err;\n  const ids = res.json().map((type) => type.id);\n  pm.collectionVariables.set(\"nonexistentPetTypeId\", Math.max(...ids) + 1);\n});\n\n// Quantos pets existem antes do POST\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/pets\", (err, res) => {\n  if (err) throw err;\n  pm.collectionVariables.set(\"petsCountBefore\", res.json().length);\n});\n"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const baseUrl = pm.environment.get(\"baseUrl\");\nconst ownerId = pm.collectionVariables.get(\"ownerId\");\nconst typeId = pm.collectionVariables.get(\"nonexistentPetTypeId\");\nconst countBefore = Number(pm.collectionVariables.get(\"petsCountBefore\"));\n\npm.test(\"status 400 ou 404\", () => {\n  pm.expect(pm.response.code).to.be.oneOf([400, 404]);\n});\n\n// A recusa não pode vir de outro campo do corpo\npm.test(\"erro não aponta outro campo\", () => {\n  const text = pm.response.text();\n  const errors = text ? JSON.parse(text).schemaValidationErrors || [] : [];\n  errors.forEach((e) => pm.expect(e.field).to.match(/^type/));\n});\n\npm.test(\"resposta não traz dados de pet\", () => {\n  pm.expect(pm.response.text()).to.not.include(\"birthDate\");\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// O 404 não pode ter vindo de um dono que não existe\npm.sendRequest(baseUrl + \"/owners/\" + ownerId, (err, res) => {\n  pm.test(\"dono usado no teste existe\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(200);\n  });\n});\n\n// Nenhum pet pode ter sido criado\npm.sendRequest(baseUrl + \"/pets\", (err, res) => {\n  pm.test(\"quantidade de pets não mudou\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.json().length).to.eql(countBefore);\n  });\n});\n\n// O POST não pode ter criado o tipo\npm.sendRequest(baseUrl + \"/pettypes/\" + typeId, (err, res) => {\n  pm.test(\"tipo continua inexistente\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(404);\n  });\n});\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Rex\",\n    \"birthDate\": \"2020-05-10\",\n    \"type\": {\n        \"id\": {{nonexistentPetTypeId}},\n        \"name\": \"{{petTypeName}}\"\n    }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/owners/{{ownerId}}/pets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners",
+                "{{ownerId}}",
+                "pets"
+              ]
+            }
+          },
+          "response": []
         }
       ]
     },
@@ -3004,6 +3052,10 @@
     },
     {
       "key": "oldestPetId",
+      "value": ""
+    },
+    {
+      "key": "nonexistentPetTypeId",
       "value": ""
     }
   ]
