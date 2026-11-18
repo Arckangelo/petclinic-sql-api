@@ -50,6 +50,144 @@
           "response": []
         },
         {
+          "name": "CT-API-OWNERS-03a",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Quantos donos existem antes do POST (a API como espelho do banco; o banco direto fica para o pytest)\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/owners\", (err, res) => {\n  pm.collectionVariables.set(\"ownersCountBefore\", res.json().length);\n});\n"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const sent = JSON.parse(pm.request.body.raw);\nconst body = pm.response.json();\nconst countBefore = Number(pm.collectionVariables.get(\"ownersCountBefore\"));\n\npm.test(\"status 400\", () => pm.response.to.have.status(400));\n\n// O 400 tem de ser pelo telefone, não por outro campo\npm.test(\"erro aponta o campo telephone com o valor enviado\", () => {\n  pm.expect(body.schemaValidationErrors, \"lista de erros de validação\").to.be.an(\"array\");\n  const fields = body.schemaValidationErrors.map((e) => e.field);\n  pm.expect(fields).to.include(\"telephone\");\n  body.schemaValidationErrors.forEach((e) => {\n    pm.expect(e.field).to.eql(\"telephone\");\n    pm.expect(e.rejectedValue).to.eql(sent.telephone);\n  });\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// Nenhum dono pode ter sido criado\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/owners\", (err, res) => {\n  pm.test(\"quantidade de donos não mudou\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.json().length).to.eql(countBefore);\n  });\n});\n"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"firstName\": \"Clara\",\n    \"lastName\": \"Lima\",\n    \"address\": \"Rua do Sol, 30\",\n    \"city\": \"Olinda\",\n    \"telephone\": \"819999888\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/owners",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "CT-API-OWNERS-03b",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const sent = JSON.parse(pm.request.body.raw);\nconst body = pm.response.json();\n\npm.test(\"status 201\", () => pm.response.to.have.status(201));\n\npm.test(\"telefone de 10 dígitos igual ao enviado\", () => {\n  pm.expect(body.telephone).to.eql(sent.telephone);\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// Confere o que ficou gravado, buscando o dono de novo\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/owners/\" + body.id, (err, res) => {\n  pm.test(\"telefone gravado igual ao enviado\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(200);\n    pm.expect(res.json().telephone).to.eql(sent.telephone);\n  });\n});\n\n// Dono criado por este request, para apagar no fim do fluxo\npm.collectionVariables.set(\"telephoneOwnerId\", body.id);\n"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"firstName\": \"Clara\",\n    \"lastName\": \"Lima\",\n    \"address\": \"Rua do Sol, 30\",\n    \"city\": \"Olinda\",\n    \"telephone\": \"8199997777\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/owners",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "CT-API-OWNERS-03c",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Quantos donos existem antes do POST (a API como espelho do banco; o banco direto fica para o pytest)\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/owners\", (err, res) => {\n  pm.collectionVariables.set(\"ownersCountBefore\", res.json().length);\n});\n"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const sent = JSON.parse(pm.request.body.raw);\nconst body = pm.response.json();\nconst countBefore = Number(pm.collectionVariables.get(\"ownersCountBefore\"));\n\npm.test(\"status 400\", () => pm.response.to.have.status(400));\n\n// O 400 tem de ser pelo telefone, não por outro campo\npm.test(\"erro aponta o campo telephone com o valor enviado\", () => {\n  pm.expect(body.schemaValidationErrors, \"lista de erros de validação\").to.be.an(\"array\");\n  const fields = body.schemaValidationErrors.map((e) => e.field);\n  pm.expect(fields).to.include(\"telephone\");\n  body.schemaValidationErrors.forEach((e) => {\n    pm.expect(e.field).to.eql(\"telephone\");\n    pm.expect(e.rejectedValue).to.eql(sent.telephone);\n  });\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// Nenhum dono pode ter sido criado\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/owners\", (err, res) => {\n  pm.test(\"quantidade de donos não mudou\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.json().length).to.eql(countBefore);\n  });\n});\n"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"firstName\": \"Clara\",\n    \"lastName\": \"Lima\",\n    \"address\": \"Rua do Sol, 30\",\n    \"city\": \"Olinda\",\n    \"telephone\": \"81999977771\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/owners",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "CT-API-OWNERS-13a",
           "event": [
             {
@@ -391,6 +529,35 @@
           ]
         },
         {
+          "name": "Limpeza: CT-API-OWNERS-03b",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// URL já com o id real (ex.: http://localhost:9966/petclinic/api/owners/21)\nconst url = pm.variables.replaceIn(pm.request.url.toString());\n\n// \"Já removido\" também é sucesso para uma limpeza\npm.test(\"dono apagado ou já removido (204 ou 404)\", () => {\n  pm.expect(pm.response.code).to.be.oneOf([204, 404]);\n});\n\n// Confere que o dono não existe mais\npm.sendRequest(url, (err, res) => {\n  pm.test(\"dono não existe mais (GET devolve 404)\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(404);\n  });\n});\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/owners/{{telephoneOwnerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners",
+                "{{telephoneOwnerId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "Limpeza: CT-API-OWNERS-13b",
           "event": [
             {
@@ -529,6 +696,14 @@
     },
     {
       "key": "visitId",
+      "value": ""
+    },
+    {
+      "key": "ownersCountBefore",
+      "value": ""
+    },
+    {
+      "key": "telephoneOwnerId",
       "value": ""
     }
   ]
