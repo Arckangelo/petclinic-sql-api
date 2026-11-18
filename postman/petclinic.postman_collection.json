@@ -2238,6 +2238,54 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "CT-API-PETS-08",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Descobre um id de dono que não existe: o maior id atual + 1\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/owners\", (err, res) => {\n  if (err) throw err;\n  const ids = res.json().map((owner) => owner.id);\n  pm.collectionVariables.set(\"nonexistentOwnerId\", Math.max(...ids) + 1);\n});\n\n// Quantos pets existem antes do POST\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/pets\", (err, res) => {\n  if (err) throw err;\n  pm.collectionVariables.set(\"petsCountBefore\", res.json().length);\n});\n"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const baseUrl = pm.environment.get(\"baseUrl\");\nconst ownerId = pm.collectionVariables.get(\"nonexistentOwnerId\");\nconst countBefore = Number(pm.collectionVariables.get(\"petsCountBefore\"));\n\npm.test(\"status 404\", () => pm.response.to.have.status(404));\n\npm.test(\"resposta não traz dados de pet\", () => {\n  pm.expect(pm.response.text()).to.not.include(\"birthDate\");\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// Nenhum pet pode ter sido criado\npm.sendRequest(baseUrl + \"/pets\", (err, res) => {\n  pm.test(\"quantidade de pets não mudou\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.json().length).to.eql(countBefore);\n  });\n});\n\n// O POST não pode ter criado o dono\npm.sendRequest(baseUrl + \"/owners/\" + ownerId, (err, res) => {\n  pm.test(\"dono continua inexistente\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(404);\n  });\n});\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Rex\",\n    \"birthDate\": \"2020-05-10\",\n    \"type\": {\n        \"id\": {{petTypeId}},\n        \"name\": \"{{petTypeName}}\"\n    }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/owners/{{nonexistentOwnerId}}/pets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners",
+                "{{nonexistentOwnerId}}",
+                "pets"
+              ]
+            }
+          },
+          "response": []
         }
       ]
     },
