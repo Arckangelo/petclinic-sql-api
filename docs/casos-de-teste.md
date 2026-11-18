@@ -1,6 +1,6 @@
 # Casos de teste — petclinic-sql-api
 
-Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um por teste a automatizar, identificados pelo ID CT que vai no comentário acima do teste no código. Os arquivos de cada seção são os previstos em `tests/api/`; nenhum existe ainda. A exceção é a seção Postman, que já roda na coleção. Total: 84 casos.
+Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um por teste a automatizar, identificados pelo ID CT que vai no comentário acima do teste no código. Os arquivos de cada seção são os previstos em `tests/api/`; nenhum existe ainda. A exceção é a seção Postman, que já roda na coleção. Total: 85 casos.
 
 **Notas gerais**
 
@@ -32,7 +32,8 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | Bugs conhecidos | [tests/api/known_bugs/test_visit_create.py](#testsapiknown_bugstest_visit_createpy) | 1 |
 | Bugs conhecidos | [tests/api/known_bugs/test_owner_search.py](#testsapiknown_bugstest_owner_searchpy) | 1 |
 | Bugs conhecidos | [tests/api/known_bugs/test_pet_name.py](#testsapiknown_bugstest_pet_namepy) | 1 |
-| **Total** | | **84** |
+| Bugs conhecidos | [tests/api/known_bugs/test_pet_type_delete.py](#testsapiknown_bugstest_pet_type_deletepy) | 1 |
+| **Total** | | **85** |
 
 ## API
 
@@ -758,7 +759,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Passos** | 1. Enviar DELETE /api/pettypes/{id}.<br>2. Verificar a resposta e o banco. |
 | **Resultado esperado** | Status 4xx (409); o tipo e o pet continuam no banco, com o mesmo type_id. |
 | **Status** | Não executado |
-| **Observações** | Dicionário: a chave `pets_type_id_fkey` recusa no banco. Um 500 indica que a regra ficou só no banco. |
+| **Observações** | Dicionário: a chave `pets_type_id_fkey` recusa no banco. Um 500 indica que a regra ficou só no banco.<br>Hoje a API responde 204 e apaga o tipo, os pets e as visitas: é o BUG-07 (CT-BUGS-PET-TYPE-DELETE-01). O contrato não documenta 409. |
 
 ### tests/api/test_specialties.py
 
@@ -1331,3 +1332,22 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Resultado obtido** | Passo 3: status 201 com o nome enviado. Passo 4: um pet a mais, com o nome só de espaços (BUGS.md). |
 | **Status** | Não executado |
 | **Observações** | Reproduzido do zero em 2026-11-18. O contrato não proíbe o valor (`name` não tem `pattern`); a regra vem da consistência com os nomes de dono e de tipo. Teardown: pet, dono e tipo; cada remoção aceita "já removido". |
+
+### tests/api/known_bugs/test_pet_type_delete.py
+
+#### CT-BUGS-PET-TYPE-DELETE-01 — [BUG-07] Apagar tipo em uso não apaga pets nem visitas
+
+| Campo | Descrição |
+|---|---|
+| **Módulo / Área** | Bugs conhecidos › API › Tipos de pet › Exclusão |
+| **Tipo de teste** | Funcional – efeito no servidor |
+| **Prioridade** | Alta |
+| **Bug relacionado** | BUG-07 |
+| **Objetivo** | Garantir que apagar um tipo de pet não remove pets nem visitas de nenhum dono. |
+| **Pré-condições** | Um tipo, dois donos, um pet desse tipo para cada dono e uma visita para o primeiro pet, criados via API. |
+| **Dados de teste** | Id do tipo criado. |
+| **Passos** | 1. Guardar do banco as linhas do tipo, dos dois pets e da visita.<br>2. Enviar DELETE /api/pettypes/{id}.<br>3. Verificar a resposta.<br>4. Conferir no banco o tipo, os pets e a visita. |
+| **Resultado esperado** | Passo 3: status 4xx, sem nome de exceção Java no corpo.<br>Passo 4: tipo, pets e visita iguais aos do passo 1. |
+| **Resultado obtido** | Passo 3: status 204. Passo 4: tipo, os dois pets e a visita não existem mais; os donos continuam (BUGS.md). |
+| **Status** | Não executado |
+| **Observações** | Reproduzido do zero em 2026-11-18. Teardown: visita, pets, donos e tipo; cada remoção aceita "já removido". |

@@ -108,7 +108,7 @@ O banco permite todos os casos acima; nos dados atuais só aparecem os pets anti
 
 ## Achados
 
-Seis bugs e uma observação de contrato, todos reproduzidos do zero e com evidência no banco. Os detalhes (passos,
+Sete bugs e uma observação de contrato, todos reproduzidos do zero e com evidência no banco. Os detalhes (passos,
 esperado, obtido, evidência e causa) estão em [BUGS.md](BUGS.md).
 
 | Bug | Resumo | Impacto | Issue |
@@ -119,6 +119,7 @@ esperado, obtido, evidência e causa) estão em [BUGS.md](BUGS.md).
 | BUG-04 | `POST /api/visits` com `id` no corpo sobrescreve uma visita existente e responde 201 | alto | [#4](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/4) |
 | BUG-05 | `GET /api/owners?lastName=` sem resultado responde 404 em vez de 200 com lista vazia | baixo a médio | [#5](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/5) |
 | BUG-06 | `POST` de pet aceita e grava nome só com espaços | baixo a médio | [#6](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/6) |
+| BUG-07 | Apagar um tipo de pet apaga todos os pets desse tipo, de qualquer dono, e as visitas deles | alto | [#7](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/7) |
 
 **OBS-01:** o contrato documenta 200 como sucesso em sete endpoints, mas a API devolve 201 ou 204 (o correto). Não
 é bug; fica para a validação de contrato da fase 5.

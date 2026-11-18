@@ -6,7 +6,7 @@ detalhes de cada um: passos, esperado, obtido, evidência no banco e, quando con
 Ambiente: `springcommunity/spring-petclinic-rest:latest` (4.0.2) com `postgres:16.3`, via `docker compose`. Todos
 reproduzidos do zero (`docker compose down -v` e `up -d --wait`). BUG-01, BUG-02 e BUG-03 foram reproduzidos de novo
 em 2026-11-15 na `4.0.2` republicada em 2026-11-14 (digest `sha256:daba846d…`); o BUG-04 foi reproduzido nela em
-2026-11-17, e o BUG-05 e o BUG-06, em 2026-11-18.
+2026-11-17, e o BUG-05, o BUG-06 e o BUG-07, em 2026-11-18.
 
 | Bug | Resumo | Impacto | Issue |
 |:---|:---|:---|:---|
@@ -16,6 +16,7 @@ em 2026-11-15 na `4.0.2` republicada em 2026-11-14 (digest `sha256:daba846d…`)
 | [BUG-04](#bug-04--criar-visita-com-id-no-corpo-sobrescreve-uma-visita-que-já-existe) | POST de visita com `id` sobrescreve visita existente | alto | [#4](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/4) |
 | [BUG-05](#bug-05--busca-de-donos-sem-resultado-responde-404-em-vez-de-200-com-lista-vazia) | Busca de donos sem resultado responde 404 em vez de lista vazia | baixo a médio | [#5](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/5) |
 | [BUG-06](#bug-06--nome-de-pet-só-com-espaços-é-aceito-e-gravado) | Nome de pet só com espaços é aceito e gravado | baixo a médio | [#6](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/6) |
+| [BUG-07](#bug-07--apagar-um-tipo-de-pet-apaga-todos-os-pets-desse-tipo-e-as-visitas-deles) | Apagar tipo apaga todos os pets desse tipo e as visitas deles | alto | [#7](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/7) |
 
 ## BUG-01 · API responde 500 em vez de 400 quando o id do dono não é numérico
 
@@ -194,6 +195,36 @@ em 2026-11-15 na `4.0.2` republicada em 2026-11-14 (digest `sha256:daba846d…`)
   pet têm `pattern` e recusam esse tipo de valor.
 - **Impacto:** baixo a médio. O pet fica sem nome visível nas telas e nos relatórios. O banco não impede: a coluna é
   `NOT NULL`, mas aceita texto só com espaços.
+
+## BUG-07 · Apagar um tipo de pet apaga todos os pets desse tipo e as visitas deles
+
+- **Issue:** [#7](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/7)
+- **Passos:** `docker compose down -v` → `up -d --wait` → criar um tipo e dois donos → criar um pet desse tipo para cada
+  dono → criar uma visita para o primeiro pet → conferir as linhas no banco → `DELETE /api/pettypes/{petTypeId}` →
+  conferir no banco de novo.
+- **Esperado:** a API recusa a exclusão de um tipo em uso com um erro `4xx` (o `CT-API-PET-TYPES-08` propõe `409`), e
+  tipo, pets e visitas continuam no banco. Um tipo é um cadastro geral: apagá-lo não pode remover pets de ninguém.
+- **Obtido:** `204 No Content`, e somem o tipo, os pets dos dois donos e a visita. Os donos continuam.
+
+  | Registro | Antes do DELETE | Depois do DELETE |
+  |:---|:---|:---|
+  | `types` id 7 | existe | **não existe** |
+  | `pets` id 14 (dono 11) | existe | **não existe** |
+  | `pets` id 15 (dono 12) | existe | **não existe** |
+  | `visits` id 5 (pet 14) | existe | **não existe** |
+  | `owners` ids 11 e 12 | existem | existem |
+
+  Total de pets: 15 antes e 13 depois. Total de visitas: 5 antes e 4 depois.
+- **Evidência no banco:** a contagem dessas linhas e os totais de `pets` e `visits`, antes e depois do `DELETE`.
+  Reproduzido do zero em 2026-11-18, na imagem `4.0.2` (digest `sha256:daba846d…`).
+- **Causa:** a classe `SpringDataPetTypeRepositoryImpl` da imagem traz as consultas `SELECT pet FROM Pet pet WHERE
+  type.id=`, `DELETE FROM Visit visit WHERE id=`, `DELETE FROM Pet pet WHERE id=` e `DELETE FROM PetType pettype WHERE
+  id=`. Ou seja, a própria API busca os pets do tipo e os apaga, com as visitas, antes de apagar o tipo. Por isso a
+  chave `pets_type_id_fkey` não chega a recusar a operação.
+- **Relação com o contrato:** o `DELETE /api/pettypes/{petTypeId}` não diz o que acontece com os pets e não documenta
+  `409`. A diferença para o `CT-API-OWNERS-10` é que um dono é responsável pelos próprios pets; o tipo é compartilhado.
+- **Impacto:** alto. Uma única chamada apaga pets e históricos de visitas de vários donos, sem aviso e com uma resposta
+  de sucesso. Só o banco mostra o que se perdeu.
 
 ## Observações
 
