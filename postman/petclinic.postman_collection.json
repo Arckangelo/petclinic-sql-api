@@ -2334,6 +2334,55 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "CT-API-PETS-10",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Cria o segundo tipo e o pet deste teste, ainda com o primeiro tipo\nconst base = pm.environment.get(\"baseUrl\");\n\nfunction post(path, data, next) {\n  pm.sendRequest({\n    url: base + path,\n    method: \"POST\",\n    header: { \"Content-Type\": \"application/json\" },\n    body: { mode: \"raw\", raw: JSON.stringify(data) }\n  }, (err, res) => {\n    if (err) throw err;\n    if (res.code !== 201) throw new Error(\"Preparação falhou: POST \" + path + \" devolveu \" + res.code);\n    next(res.json());\n  });\n}\n\nconst secondType = { name: \"coelho\" };\npost(\"/pettypes\", secondType, (type) => {\n  pm.collectionVariables.set(\"secondPetTypeId\", type.id);\n  pm.collectionVariables.set(\"secondPetTypeName\", secondType.name);\n\n  const pet = {\n    name: \"Rex\",\n    birthDate: \"2020-05-10\",\n    type: { id: Number(pm.collectionVariables.get(\"petTypeId\")), name: pm.collectionVariables.get(\"petTypeName\") }\n  };\n  post(\"/owners/\" + pm.collectionVariables.get(\"ownerId\") + \"/pets\", pet, (createdPet) => {\n    pm.collectionVariables.set(\"updatePetId\", createdPet.id);\n    pm.collectionVariables.set(\"petBefore\", JSON.stringify(pet));\n\n    // Quantos pets existem antes do PUT\n    pm.sendRequest(base + \"/pets\", (err, res) => {\n      if (err) throw err;\n      pm.collectionVariables.set(\"petsCountBefore\", res.json().length);\n    });\n  });\n});\n"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// PUT devolve 204 sem corpo: não use pm.response.json() aqui\nconst base = pm.environment.get(\"baseUrl\");\nconst sent = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));\nconst before = JSON.parse(pm.collectionVariables.get(\"petBefore\"));\nconst petId = pm.collectionVariables.get(\"updatePetId\");\nconst ownerId = pm.collectionVariables.get(\"ownerId\");\nconst countBefore = Number(pm.collectionVariables.get(\"petsCountBefore\"));\n\n// Se um valor enviado for igual ao de antes, o teste não prova a atualização dele\npm.test(\"valores enviados são diferentes dos de antes\", () => {\n  pm.expect(sent.name, \"name\").to.not.eql(before.name);\n  pm.expect(sent.birthDate, \"birthDate\").to.not.eql(before.birthDate);\n  pm.expect(sent.type.id, \"type.id\").to.not.eql(before.type.id);\n});\n\npm.test(\"status 204\", () => pm.response.to.have.status(204));\n\npm.test(\"resposta sem corpo\", () => {\n  pm.expect(pm.response.text()).to.be.empty;\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// Sem corpo na resposta, a conferência é feita consultando o pet\npm.sendRequest(base + \"/pets/\" + petId, (err, res) => {\n  pm.test(\"pet tem os novos valores enviados\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(200);\n    const pet = res.json();\n    pm.expect(pet.name, \"name\").to.eql(sent.name);\n    pm.expect(pet.birthDate, \"birthDate\").to.eql(sent.birthDate);\n    pm.expect(pet.type.id, \"type.id\").to.eql(sent.type.id);\n  });\n\n  pm.test(\"dono continua o mesmo\", () => {\n    pm.expect(String(res.json().ownerId)).to.eql(String(ownerId));\n  });\n});\n\n// O PUT não pode criar nem apagar pet\npm.sendRequest(base + \"/pets\", (err, res) => {\n  pm.test(\"quantidade de pets não mudou\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.json().length).to.eql(countBefore);\n  });\n});\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Thor\",\n    \"birthDate\": \"2019-03-15\",\n    \"type\": {\n        \"id\": {{secondPetTypeId}},\n        \"name\": \"{{secondPetTypeName}}\"\n    }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/owners/{{ownerId}}/pets/{{updatePetId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners",
+                "{{ownerId}}",
+                "pets",
+                "{{updatePetId}}"
+              ]
+            }
+          },
+          "response": []
         }
       ]
     },
@@ -2526,6 +2575,35 @@
                 "type": "text/javascript",
                 "exec": [
                   "// URL já com o id real (ex.: http://localhost:9966/petclinic/api/pets/22)\nconst url = pm.variables.replaceIn(pm.request.url.toString());\n\n// \"Já removido\" também é sucesso para uma limpeza\npm.test(\"pet apagado ou já removido (204 ou 404)\", () => {\n  pm.expect(pm.response.code).to.be.oneOf([204, 404]);\n});\n\n// Confere que o pet não existe mais\npm.sendRequest(url, (err, res) => {\n  pm.test(\"pet não existe mais (GET devolve 404)\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(404);\n  });\n});\n"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Limpeza: CT-API-PETS-10",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/pets/{{updatePetId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pets",
+                "{{updatePetId}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Apaga o pet e depois o segundo tipo: o pet ainda aponta para o tipo\nconst base = pm.environment.get(\"baseUrl\");\nconst typeUrl = base + \"/pettypes/\" + pm.collectionVariables.get(\"secondPetTypeId\");\n\n// URL já com o id real (ex.: http://localhost:9966/petclinic/api/pets/22)\nconst petUrl = pm.variables.replaceIn(pm.request.url.toString());\n\n// \"Já removido\" também é sucesso para uma limpeza\npm.test(\"pet apagado ou já removido (204 ou 404)\", () => {\n  pm.expect(pm.response.code).to.be.oneOf([204, 404]);\n});\n\npm.sendRequest(petUrl, (err, res) => {\n  pm.test(\"pet não existe mais (GET devolve 404)\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(404);\n  });\n\n  pm.sendRequest({ url: typeUrl, method: \"DELETE\" }, (delErr, delRes) => {\n    pm.test(\"tipo apagado ou já removido (204 ou 404)\", () => {\n      pm.expect(delErr).to.be.null;\n      pm.expect(delRes.code).to.be.oneOf([204, 404]);\n    });\n\n    pm.sendRequest(typeUrl, (getErr, getRes) => {\n      pm.test(\"tipo não existe mais (GET devolve 404)\", () => {\n        pm.expect(getErr).to.be.null;\n        pm.expect(getRes.code).to.eql(404);\n      });\n    });\n  });\n});\n"
                 ]
               }
             }
@@ -3056,6 +3134,22 @@
     },
     {
       "key": "nonexistentPetTypeId",
+      "value": ""
+    },
+    {
+      "key": "secondPetTypeId",
+      "value": ""
+    },
+    {
+      "key": "secondPetTypeName",
+      "value": ""
+    },
+    {
+      "key": "updatePetId",
+      "value": ""
+    },
+    {
+      "key": "petBefore",
       "value": ""
     }
   ]
