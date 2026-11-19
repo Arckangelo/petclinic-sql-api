@@ -2432,6 +2432,44 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "CT-API-PETS-12",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Cria o pet deste teste, sem visitas, no dono do CT-API-OWNERS-01\nconst base = pm.environment.get(\"baseUrl\");\nconst ownerId = pm.collectionVariables.get(\"ownerId\");\nconst pet = {\n  name: \"Rex\",\n  birthDate: \"2020-05-10\",\n  type: { id: Number(pm.collectionVariables.get(\"petTypeId\")), name: pm.collectionVariables.get(\"petTypeName\") }\n};\n\npm.sendRequest({\n  url: base + \"/owners/\" + ownerId + \"/pets\",\n  method: \"POST\",\n  header: { \"Content-Type\": \"application/json\" },\n  body: { mode: \"raw\", raw: JSON.stringify(pet) }\n}, (err, res) => {\n  if (err) throw err;\n  if (res.code !== 201) throw new Error(\"Preparação falhou: POST do pet devolveu \" + res.code);\n  pm.collectionVariables.set(\"deletePetId\", res.json().id);\n\n  // Pets do dono e total de pets antes do DELETE\n  pm.sendRequest(base + \"/owners/\" + ownerId, (err, res) => {\n    if (err) throw err;\n    pm.collectionVariables.set(\"ownerPetIdsBefore\", JSON.stringify(res.json().pets.map((p) => p.id)));\n  });\n  pm.sendRequest(base + \"/pets\", (err, res) => {\n    if (err) throw err;\n    pm.collectionVariables.set(\"petsCountBefore\", res.json().length);\n  });\n});\n"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// DELETE devolve 204 sem corpo: não use pm.response.json() aqui\nconst base = pm.environment.get(\"baseUrl\");\nconst petId = Number(pm.collectionVariables.get(\"deletePetId\"));\nconst ownerId = pm.collectionVariables.get(\"ownerId\");\nconst typeId = pm.collectionVariables.get(\"petTypeId\");\nconst petIdsBefore = JSON.parse(pm.collectionVariables.get(\"ownerPetIdsBefore\"));\nconst countBefore = Number(pm.collectionVariables.get(\"petsCountBefore\"));\n\npm.test(\"status 204\", () => pm.response.to.have.status(204));\n\npm.test(\"resposta sem corpo\", () => {\n  pm.expect(pm.response.text()).to.be.empty;\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\npm.sendRequest(base + \"/pets/\" + petId, (err, res) => {\n  pm.test(\"pet não existe mais (GET devolve 404)\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(404);\n  });\n});\n\n// Só o pet apagado pode sair da lista do dono\npm.sendRequest(base + \"/owners/\" + ownerId, (err, res) => {\n  pm.test(\"dono continua, com os outros pets\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(200);\n    const idsAfter = res.json().pets.map((p) => p.id).sort((a, b) => a - b);\n    const expected = petIdsBefore.filter((id) => id !== petId).sort((a, b) => a - b);\n    pm.expect(idsAfter).to.eql(expected);\n  });\n});\n\n// Apagar o pet não pode levar o tipo junto\npm.sendRequest(base + \"/pettypes/\" + typeId, (err, res) => {\n  pm.test(\"tipo do pet continua\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(200);\n  });\n});\n\npm.sendRequest(base + \"/pets\", (err, res) => {\n  pm.test(\"lista de pets tem exatamente um a menos\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.json().length).to.eql(countBefore - 1);\n  });\n});\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/pets/{{deletePetId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pets",
+                "{{deletePetId}}"
+              ]
+            }
+          },
+          "response": []
         }
       ]
     },
@@ -2671,6 +2709,35 @@
               "path": [
                 "pets",
                 "{{movePetId}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// URL já com o id real (ex.: http://localhost:9966/petclinic/api/pets/22)\nconst url = pm.variables.replaceIn(pm.request.url.toString());\n\n// \"Já removido\" também é sucesso para uma limpeza\npm.test(\"pet apagado ou já removido (204 ou 404)\", () => {\n  pm.expect(pm.response.code).to.be.oneOf([204, 404]);\n});\n\n// Confere que o pet não existe mais\npm.sendRequest(url, (err, res) => {\n  pm.test(\"pet não existe mais (GET devolve 404)\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(404);\n  });\n});\n"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Limpeza: CT-API-PETS-12",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/pets/{{deletePetId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pets",
+                "{{deletePetId}}"
               ]
             }
           },
@@ -3232,6 +3299,14 @@
     },
     {
       "key": "movePetId",
+      "value": ""
+    },
+    {
+      "key": "deletePetId",
+      "value": ""
+    },
+    {
+      "key": "ownerPetIdsBefore",
       "value": ""
     }
   ]
