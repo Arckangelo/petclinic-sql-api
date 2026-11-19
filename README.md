@@ -108,7 +108,7 @@ O banco permite todos os casos acima; nos dados atuais só aparecem os pets anti
 
 ## Achados
 
-Nove bugs e duas observações, todos reproduzidos do zero e com evidência no banco. Os detalhes (passos,
+Dez bugs e duas observações, todos reproduzidos do zero e com evidência no banco. Os detalhes (passos,
 esperado, obtido, evidência e causa) estão em [BUGS.md](BUGS.md).
 
 | Bug | Resumo | Impacto | Issue |
@@ -122,6 +122,7 @@ esperado, obtido, evidência e causa) estão em [BUGS.md](BUGS.md).
 | BUG-07 | Apagar um tipo de pet apaga todos os pets desse tipo, de qualquer dono, e as visitas deles | alto | [#7](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/7) |
 | BUG-08 | Corpo ilegível (data inválida, tipo errado ou JSON quebrado) responde 500 em vez de 400 | médio | [#8](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/8) |
 | BUG-09 | Id negativo na URL responde 500 em vez de 400 nas 22 operações que recebem id | médio | [#9](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/9) |
+| BUG-10 | `PUT` de pet e `POST` de visita pelo caminho de outro dono alteram o pet e respondem 204 e 201 | médio | [#10](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/10) |
 
 **OBS-01:** o contrato documenta 200 como sucesso em sete endpoints, mas a API devolve 201 ou 204 (o correto). Não
 é bug; fica para a validação de contrato da fase 5.

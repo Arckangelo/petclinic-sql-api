@@ -6,7 +6,7 @@ detalhes de cada um: passos, esperado, obtido, evidência no banco e, quando con
 Ambiente: `springcommunity/spring-petclinic-rest:latest` (4.0.2) com `postgres:16.3`, via `docker compose`. Todos
 reproduzidos do zero (`docker compose down -v` e `up -d --wait`). BUG-01, BUG-02 e BUG-03 foram reproduzidos de novo
 em 2026-11-15 na `4.0.2` republicada em 2026-11-14 (digest `sha256:daba846d…`); o BUG-04 foi reproduzido nela em
-2026-11-17, e o BUG-05, o BUG-06, o BUG-07, o BUG-08 e o BUG-09, em 2026-11-18.
+2026-11-17, o BUG-05, o BUG-06, o BUG-07, o BUG-08 e o BUG-09, em 2026-11-18, e o BUG-10, em 2026-11-19.
 
 | Bug | Resumo | Impacto | Issue |
 |:---|:---|:---|:---|
@@ -19,6 +19,7 @@ em 2026-11-15 na `4.0.2` republicada em 2026-11-14 (digest `sha256:daba846d…`)
 | [BUG-07](#bug-07--apagar-um-tipo-de-pet-apaga-todos-os-pets-desse-tipo-e-as-visitas-deles) | Apagar tipo apaga todos os pets desse tipo e as visitas deles | alto | [#7](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/7) |
 | [BUG-08](#bug-08--corpo-ilegível-responde-500-em-vez-de-400) | Corpo ilegível responde 500 em vez de 400 | médio | [#8](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/8) |
 | [BUG-09](#bug-09--id-negativo-na-url-responde-500-em-vez-de-400) | Id negativo na URL responde 500 em vez de 400 | médio | [#9](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/9) |
+| [BUG-10](#bug-10--dono-da-url-não-é-conferido-ao-alterar-pet-nem-ao-criar-visita) | Dono da URL não é conferido ao alterar pet nem ao criar visita | médio | [#10](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/10) |
 
 ## BUG-01 · API responde 500 em vez de 400 quando o id do dono não é numérico
 
@@ -286,6 +287,34 @@ em 2026-11-15 na `4.0.2` republicada em 2026-11-14 (digest `sha256:daba846d…`)
 - **Impacto:** médio. Nenhum dado é afetado, mas um erro do cliente aparece como falha do servidor em toda a API: quem
   chama não sabe o que corrigir, o monitoramento recebe alarmes falsos e o nome da exceção fica exposto, como no BUG-01
   e no BUG-08.
+
+## BUG-10 · Dono da URL não é conferido ao alterar pet nem ao criar visita
+
+- **Issue:** [#10](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/10)
+- **Passos:** `docker compose down -v` → `up -d --wait` → criar os donos A e B, um tipo e um pet do dono A → contar
+  as linhas de `owners`, `pets`, `types` e `visits` → `GET /api/owners/{B}/pets/{pet}` →
+  `PUT /api/owners/{B}/pets/{pet}` com novo nome e nova data → `POST /api/owners/{B}/pets/{pet}/visits` → conferir a
+  linha do pet e as visitas dele no banco.
+- **Esperado:** `404` nos três pedidos, porque o pet não pertence ao dono B, e nenhuma mudança no banco. O contrato
+  lista o `404` para o `PUT` e para o `POST` de visita.
+- **Obtido:** o `GET` responde `404`, mas o `PUT` responde `204` e o `POST` de visita responde `201`.
+
+  | Pedido pelo caminho do dono B | Resposta | Efeito no banco |
+  |:---|:---|:---|
+  | `GET /api/owners/{B}/pets/{pet}` | `404` | nenhum |
+  | `PUT /api/owners/{B}/pets/{pet}` | `204` | nome e data do pet alterados; `owner_id` continua o do dono A |
+  | `POST /api/owners/{B}/pets/{pet}/visits` | `201` | visita nova ligada ao pet do dono A |
+
+  Com um dono inexistente na URL, o `PUT` responde `404` e nada muda.
+
+- **Evidência no banco:** a linha do pet passa de `Rex`, `2020-05-10`, dono A para `Zeus`, `2019-03-15`, dono A, e
+  `visits` passa de 4 para 5 linhas, com a visita nova apontando para o pet do dono A. O dono B continua sem pets.
+  Reproduzido do zero em 2026-11-19, na imagem `4.0.2` (digest `sha256:daba846d…`).
+- **Causa provável:** a API confere só se o dono da URL existe; depois busca o pet pelo id, sem conferir de quem ele
+  é. O `GET` pelo mesmo caminho faz essa conferência, por isso responde `404`.
+- **Impacto:** médio. Os dados de um pet e o histórico de visitas dele podem ser mudados pelo caminho de outro dono,
+  e a API confirma a operação como se estivesse certa. Num sistema em que cada pessoa só acessa os próprios dados, isso
+  permitiria alterar o pet de outra pessoa.
 
 ## Observações
 

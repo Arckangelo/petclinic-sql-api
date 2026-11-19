@@ -1,6 +1,6 @@
 # Casos de teste — petclinic-sql-api
 
-Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um por teste a automatizar, identificados pelo ID CT que vai no comentário acima do teste no código. Os arquivos de cada seção são os previstos em `tests/api/`; nenhum existe ainda. A exceção é a seção Postman, que já roda na coleção. Total: 87 casos.
+Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um por teste a automatizar, identificados pelo ID CT que vai no comentário acima do teste no código. Os arquivos de cada seção são os previstos em `tests/api/`; nenhum existe ainda. A exceção é a seção Postman, que já roda na coleção. Total: 88 casos.
 
 **Notas gerais**
 
@@ -35,7 +35,8 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | Bugs conhecidos | [tests/api/known_bugs/test_pet_type_delete.py](#testsapiknown_bugstest_pet_type_deletepy) | 1 |
 | Bugs conhecidos | [tests/api/known_bugs/test_request_body.py](#testsapiknown_bugstest_request_bodypy) | 1 |
 | Bugs conhecidos | [tests/api/known_bugs/test_path_id.py](#testsapiknown_bugstest_path_idpy) | 1 |
-| **Total** | | **87** |
+| Bugs conhecidos | [tests/api/known_bugs/test_pet_owner_path.py](#testsapiknown_bugstest_pet_owner_pathpy) | 1 |
+| **Total** | | **88** |
 
 ## API
 
@@ -413,6 +414,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Passos** | 1. Enviar PUT /api/owners/{ownerId}/pets/{petId} com os novos valores.<br>2. Verificar a resposta.<br>3. Conferir a linha do pet no banco. |
 | **Resultado esperado** | Passo 2: status 204.<br>Passo 3: name, birth_date e type_id novos; owner_id igual ao de antes. |
 | **Status** | Não executado |
+| **Observações** | O dono da URL é o dono do pet. Com outro dono na URL, a API altera o pet assim mesmo: é o BUG-10 (CT-BUG-10-01). |
 
 #### CT-API-PETS-11 — Mover pet para dono inexistente
 
@@ -1390,3 +1392,22 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Resultado obtido** | Passo 3: status 500 com `ConstraintViolationException`. Passo 4: contagens iguais (BUGS.md). |
 | **Status** | Não executado |
 | **Observações** | Reproduzido do zero em 2026-11-18. Um caso parametrizado por operação (`pytest.mark.parametrize`). Não cria dados, então não precisa de limpeza. |
+
+### tests/api/known_bugs/test_pet_owner_path.py
+
+#### CT-BUG-10-01 — [BUG-10] Caminho de outro dono não altera o pet nem cria visita
+
+| Campo | Descrição |
+|---|---|
+| **Módulo / Área** | Bugs conhecidos › API › Pets e visitas |
+| **Tipo de teste** | Funcional – integridade |
+| **Prioridade** | Alta |
+| **Bug relacionado** | BUG-10 |
+| **Objetivo** | Garantir que a API só altera um pet ou cria visita para ele pelo caminho do dono dele. |
+| **Pré-condições** | Donos A e B, um tipo e um pet do dono A criados via API. |
+| **Dados de teste** | PUT com novo name e nova birthDate; POST de visita com data e descrição. Os dois com o id do dono B na URL. |
+| **Passos** | 1. Guardar a linha do pet e contar as visitas dele.<br>2. Enviar PUT /api/owners/{B}/pets/{pet}.<br>3. Enviar POST /api/owners/{B}/pets/{pet}/visits.<br>4. Conferir a linha do pet e as visitas de novo. |
+| **Resultado esperado** | Passos 2 e 3: status 404.<br>Passo 4: linha do pet igual à do passo 1 e mesma contagem de visitas. |
+| **Resultado obtido** | Passo 2: 204. Passo 3: 201. Passo 4: nome e data alterados e uma visita a mais (BUGS.md). |
+| **Status** | Não executado |
+| **Observações** | Reproduzido do zero em 2026-11-19. Um caso parametrizado por pedido (`pytest.mark.parametrize`). Teardown: visita, pet, tipo e donos; cada remoção aceita "já removido". |
