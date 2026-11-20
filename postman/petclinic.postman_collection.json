@@ -2804,6 +2804,56 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "CT-API-VISITS-05a",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// A visita é marcada no dia do nascimento do pet do CT-API-PETS-01\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/pets/\" + pm.collectionVariables.get(\"petId\"), (err, res) => {\n  if (err) throw err;\n  if (res.code !== 200) throw new Error(\"Preparação falhou: GET do pet devolveu \" + res.code);\n  const birth = res.json().birthDate;\n  pm.collectionVariables.set(\"visitDate\", birth);\n});\n"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const base = pm.environment.get(\"baseUrl\");\nconst sent = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));\nconst body = pm.response.json();\n\npm.test(\"status 201\", () => pm.response.to.have.status(201));\n\npm.test(\"data na resposta igual à enviada\", () => {\n  pm.expect(body.date).to.eql(sent.date);\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// A data enviada tem de ser exatamente o nascimento do pet\npm.sendRequest(base + \"/pets/\" + pm.collectionVariables.get(\"petId\"), (err, res) => {\n  pm.test(\"data enviada é o dia do nascimento do pet\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(sent.date).to.eql(res.json().birthDate);\n  });\n});\n\n// Confere o que ficou gravado, buscando a visita de novo\npm.sendRequest(base + \"/visits/\" + body.id, (err, res) => {\n  pm.test(\"data gravada igual à enviada\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(200);\n    pm.expect(res.json().date).to.eql(sent.date);\n  });\n});\n\n// Visita criada por este request, para apagar no fim do fluxo\npm.collectionVariables.set(\"birthVisitId\", body.id);\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"date\": \"{{visitDate}}\",\n    \"description\": \"Consulta de rotina\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/owners/{{ownerId}}/pets/{{petId}}/visits",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners",
+                "{{ownerId}}",
+                "pets",
+                "{{petId}}",
+                "visits"
+              ]
+            }
+          },
+          "response": []
         }
       ]
     },
@@ -2852,6 +2902,35 @@
               "path": [
                 "visits",
                 "{{limitVisitId}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// URL já com o id real (ex.: http://localhost:9966/petclinic/api/visits/9)\nconst url = pm.variables.replaceIn(pm.request.url.toString());\n\n// \"Já removido\" também é sucesso para uma limpeza\npm.test(\"visita apagada ou já removida (204 ou 404)\", () => {\n  pm.expect(pm.response.code).to.be.oneOf([204, 404]);\n});\n\n// Confere que a visita não existe mais\npm.sendRequest(url, (err, res) => {\n  pm.test(\"visita não existe mais (GET devolve 404)\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(404);\n  });\n});\n"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Limpeza: CT-API-VISITS-05a",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/visits/{{birthVisitId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "visits",
+                "{{birthVisitId}}"
               ]
             }
           },
@@ -3685,6 +3764,14 @@
     },
     {
       "key": "limitVisitId",
+      "value": ""
+    },
+    {
+      "key": "visitDate",
+      "value": ""
+    },
+    {
+      "key": "birthVisitId",
       "value": ""
     }
   ]
