@@ -2554,6 +2554,106 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "CT-API-VISITS-02a",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Quantas visitas existem antes do POST\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/visits\", (err, res) => {\n  if (err) throw err;\n  pm.collectionVariables.set(\"visitsCountBefore\", res.json().length);\n});\n"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Campo omitido neste request\nconst field = \"date\";\n\nconst sent = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));\nconst countBefore = Number(pm.collectionVariables.get(\"visitsCountBefore\"));\n\npm.test(\"corpo enviado não tem o campo \" + field, () => {\n  pm.expect(sent).to.not.have.property(field);\n});\n\npm.test(\"status 400\", () => pm.response.to.have.status(400));\n\n// O 400 tem de ser pelo campo que falta, não por outro\npm.test(\"erro aponta o campo \" + field, () => {\n  const errors = pm.response.json().schemaValidationErrors;\n  pm.expect(errors, \"lista de erros de validação\").to.be.an(\"array\").and.not.empty;\n  errors.forEach((e) => pm.expect(e.field).to.eql(field));\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// Nenhuma visita pode ter sido criada\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/visits\", (err, res) => {\n  pm.test(\"quantidade de visitas não mudou\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.json().length).to.eql(countBefore);\n  });\n});\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"description\": \"Consulta de rotina\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/owners/{{ownerId}}/pets/{{petId}}/visits",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners",
+                "{{ownerId}}",
+                "pets",
+                "{{petId}}",
+                "visits"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "CT-API-VISITS-02b",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Quantas visitas existem antes do POST\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/visits\", (err, res) => {\n  if (err) throw err;\n  pm.collectionVariables.set(\"visitsCountBefore\", res.json().length);\n});\n"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Campo omitido neste request\nconst field = \"description\";\n\nconst sent = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));\nconst countBefore = Number(pm.collectionVariables.get(\"visitsCountBefore\"));\n\npm.test(\"corpo enviado não tem o campo \" + field, () => {\n  pm.expect(sent).to.not.have.property(field);\n});\n\npm.test(\"status 400\", () => pm.response.to.have.status(400));\n\n// O 400 tem de ser pelo campo que falta, não por outro\npm.test(\"erro aponta o campo \" + field, () => {\n  const errors = pm.response.json().schemaValidationErrors;\n  pm.expect(errors, \"lista de erros de validação\").to.be.an(\"array\").and.not.empty;\n  errors.forEach((e) => pm.expect(e.field).to.eql(field));\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// Nenhuma visita pode ter sido criada\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/visits\", (err, res) => {\n  pm.test(\"quantidade de visitas não mudou\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.json().length).to.eql(countBefore);\n  });\n});\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"date\": \"2026-11-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/owners/{{ownerId}}/pets/{{petId}}/visits",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners",
+                "{{ownerId}}",
+                "pets",
+                "{{petId}}",
+                "visits"
+              ]
+            }
+          },
+          "response": []
         }
       ]
     },
@@ -3394,6 +3494,10 @@
     },
     {
       "key": "visitedPetCountsBefore",
+      "value": ""
+    },
+    {
+      "key": "visitsCountBefore",
       "value": ""
     }
   ]
