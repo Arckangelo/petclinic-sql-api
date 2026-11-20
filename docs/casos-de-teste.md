@@ -1,6 +1,6 @@
 # Casos de teste — petclinic-sql-api
 
-Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um por teste a automatizar, identificados pelo ID CT que vai no comentário acima do teste no código. Os arquivos de cada seção são os previstos em `tests/api/`; nenhum existe ainda. A exceção é a seção Postman, que já roda na coleção. Total: 89 casos.
+Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um por teste a automatizar, identificados pelo ID CT que vai no comentário acima do teste no código. Os arquivos de cada seção são os previstos em `tests/api/`; nenhum existe ainda. A exceção é a seção Postman, que já roda na coleção. Total: 90 casos.
 
 **Notas gerais**
 
@@ -37,7 +37,8 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | Bugs conhecidos | [tests/api/known_bugs/test_path_id.py](#testsapiknown_bugstest_path_idpy) | 1 |
 | Bugs conhecidos | [tests/api/known_bugs/test_pet_owner_path.py](#testsapiknown_bugstest_pet_owner_pathpy) | 1 |
 | Bugs conhecidos | [tests/api/known_bugs/test_visit_description.py](#testsapiknown_bugstest_visit_descriptionpy) | 1 |
-| **Total** | | **89** |
+| Bugs conhecidos | [tests/api/known_bugs/test_visit_date.py](#testsapiknown_bugstest_visit_datepy) | 1 |
+| **Total** | | **90** |
 
 ## API
 
@@ -539,7 +540,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Passos** | 1. Para cada data, enviar POST /api/owners/{ownerId}/pets/{petId}/visits.<br>2. Verificar a resposta e o banco. |
 | **Resultado esperado** | Dia do nascimento: status 201.<br>Nascimento − 1 dia e 1900-01-01: status 400 e nenhuma visita nova. |
 | **Status** | Não executado |
-| **Observações** | Dicionário: o banco não compara a data da visita com o nascimento do pet.<br>Regra a confirmar: o contrato não traz essa regra. |
+| **Observações** | Dicionário: o banco não compara a data da visita com o nascimento do pet.<br>Regra adotada em 2026-11-20: a visita não pode ser anterior ao nascimento, embora o contrato não traga a regra. Hoje as datas anteriores são aceitas: é o BUG-12 (CT-BUG-12-01). Na coleção do Postman entra só o dia do nascimento (`CT-API-VISITS-05a`), para ela continuar sem falhas conhecidas. |
 
 #### CT-API-VISITS-06 — Visita com data no futuro (agendamento)
 
@@ -1431,3 +1432,22 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Resultado obtido** | Passo 3: status 201 com a descrição enviada. Passo 4: uma visita a mais, com a descrição só de espaços (BUGS.md). |
 | **Status** | Não executado |
 | **Observações** | Reproduzido do zero em 2026-11-20. O contrato não proíbe o valor (`description` não tem `pattern`); a regra é a mesma do CT-BUG-06-01. Teardown: visita, pet, tipo e dono; cada remoção aceita "já removido". |
+
+### tests/api/known_bugs/test_visit_date.py
+
+#### CT-BUG-12-01 — [BUG-12] Visita antes do nascimento do pet é recusada
+
+| Campo | Descrição |
+|---|---|
+| **Módulo / Área** | Bugs conhecidos › API › Visitas › Criação |
+| **Tipo de teste** | Funcional – regra de negócio |
+| **Prioridade** | Média |
+| **Bug relacionado** | BUG-12 |
+| **Objetivo** | Garantir que a API não grava visita com data anterior ao nascimento do pet. |
+| **Pré-condições** | Dono, tipo e pet com nascimento conhecido, criados via API. |
+| **Dados de teste** | date = nascimento − 1 dia e `1900-01-01`. |
+| **Passos** | 1. Contar as visitas no banco.<br>2. Para cada data, enviar POST /api/owners/{ownerId}/pets/{petId}/visits.<br>3. Verificar cada resposta.<br>4. Contar as visitas de novo. |
+| **Resultado esperado** | Passo 3: status 400 apontando o campo `date`.<br>Passo 4: mesma contagem do passo 1. |
+| **Resultado obtido** | Passo 3: status 201 nos dois. Passo 4: duas visitas a mais, com data anterior ao nascimento (BUGS.md). |
+| **Status** | Não executado |
+| **Observações** | Reproduzido do zero em 2026-11-20. Um caso parametrizado por data (`pytest.mark.parametrize`). Teardown: visitas, pet, tipo e dono; cada remoção aceita "já removido". |

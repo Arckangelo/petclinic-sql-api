@@ -6,7 +6,7 @@ detalhes de cada um: passos, esperado, obtido, evidência no banco e, quando con
 Ambiente: `springcommunity/spring-petclinic-rest:latest` (4.0.2) com `postgres:16.3`, via `docker compose`. Todos
 reproduzidos do zero (`docker compose down -v` e `up -d --wait`). BUG-01, BUG-02 e BUG-03 foram reproduzidos de novo
 em 2026-11-15 na `4.0.2` republicada em 2026-11-14 (digest `sha256:daba846d…`); o BUG-04 foi reproduzido nela em
-2026-11-17, o BUG-05, o BUG-06, o BUG-07, o BUG-08 e o BUG-09, em 2026-11-18, o BUG-10, em 2026-11-19, e o BUG-11, em 2026-11-20.
+2026-11-17, o BUG-05, o BUG-06, o BUG-07, o BUG-08 e o BUG-09, em 2026-11-18, o BUG-10, em 2026-11-19, e o BUG-11 e o BUG-12, em 2026-11-20.
 
 | Bug | Resumo | Impacto | Issue |
 |:---|:---|:---|:---|
@@ -21,6 +21,7 @@ em 2026-11-15 na `4.0.2` republicada em 2026-11-14 (digest `sha256:daba846d…`)
 | [BUG-09](#bug-09--id-negativo-na-url-responde-500-em-vez-de-400) | Id negativo na URL responde 500 em vez de 400 | médio | [#9](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/9) |
 | [BUG-10](#bug-10--dono-da-url-não-é-conferido-ao-alterar-pet-nem-ao-criar-visita) | Dono da URL não é conferido ao alterar pet nem ao criar visita | médio | [#10](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/10) |
 | [BUG-11](#bug-11--descrição-de-visita-só-com-espaços-é-aceita-e-gravada) | Descrição de visita só com espaços é aceita e gravada | baixo a médio | [#11](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/11) |
+| [BUG-12](#bug-12--visita-com-data-anterior-ao-nascimento-do-pet-é-aceita) | Visita com data anterior ao nascimento do pet é aceita | baixo a médio | [#12](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/12) |
 
 ## BUG-01 · API responde 500 em vez de 400 quando o id do dono não é numérico
 
@@ -341,6 +342,32 @@ em 2026-11-15 na `4.0.2` republicada em 2026-11-14 (digest `sha256:daba846d…`)
   O contrato não proíbe o valor: o defeito é de regra de negócio, o mesmo do BUG-06 no nome do pet.
 - **Impacto:** baixo a médio. A visita aparece no histórico do pet sem descrever o atendimento. O banco não impede: a
   coluna aceita texto só com espaços.
+
+## BUG-12 · Visita com data anterior ao nascimento do pet é aceita
+
+- **Issue:** [#12](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/12)
+- **Passos:** `docker compose down -v` → `up -d --wait` → criar um dono, um tipo e um pet nascido em `2020-05-10` →
+  contar as linhas de `visits` → `POST /api/owners/{ownerId}/pets/{petId}/visits` com `"date": "2020-05-09"`, um dia
+  antes do nascimento, e depois com `"date": "1900-01-01"` → conferir as visitas no banco.
+- **Esperado:** `400 Bad Request` apontando o campo `date`, sem gravar a visita. Uma visita não pode acontecer antes
+  de o pet nascer.
+- **Obtido:** `201 Created` nos dois pedidos, e duas linhas novas em `visits`.
+
+  | `visit_date` gravada | `birth_date` do pet | Visita antes do nascimento? |
+  |:---|:---|:---|
+  | 2020-05-09 | 2020-05-10 | sim |
+  | 1900-01-01 | 2020-05-10 | sim |
+
+  Total de visitas: 4 antes e 6 depois. A data `0001-01-01` também é aceita. A visita no dia do nascimento
+  (`CT-API-VISITS-05a`) é aceita, como esperado.
+- **Evidência no banco:** as duas linhas novas de `visits`, cada uma com data anterior ao nascimento do pet ligado a
+  ela, e a contagem de `visits` antes e depois. Reproduzido do zero em 2026-11-20, na imagem `4.0.2` (digest
+  `sha256:daba846d…`).
+- **Relação com o contrato:** `date` de `VisitFields` só tem `format: date`; o contrato não traz a regra. O defeito é
+  de regra de negócio: a API valida a data de nascimento do pet (recusa futuro e mais de 50 anos), mas não compara a
+  data da visita com ela nem impõe qualquer limite.
+- **Impacto:** baixo a médio. O histórico do pet fica com atendimentos impossíveis, e relatórios por período contam
+  visitas que não existiram. O banco não impede: nenhuma restrição compara as duas datas.
 
 ## Observações
 
