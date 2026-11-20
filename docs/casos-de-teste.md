@@ -1,6 +1,6 @@
 # Casos de teste — petclinic-sql-api
 
-Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um por teste a automatizar, identificados pelo ID CT que vai no comentário acima do teste no código. Os arquivos de cada seção são os previstos em `tests/api/`; nenhum existe ainda. A exceção é a seção Postman, que já roda na coleção. Total: 88 casos.
+Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um por teste a automatizar, identificados pelo ID CT que vai no comentário acima do teste no código. Os arquivos de cada seção são os previstos em `tests/api/`; nenhum existe ainda. A exceção é a seção Postman, que já roda na coleção. Total: 89 casos.
 
 **Notas gerais**
 
@@ -36,7 +36,8 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | Bugs conhecidos | [tests/api/known_bugs/test_request_body.py](#testsapiknown_bugstest_request_bodypy) | 1 |
 | Bugs conhecidos | [tests/api/known_bugs/test_path_id.py](#testsapiknown_bugstest_path_idpy) | 1 |
 | Bugs conhecidos | [tests/api/known_bugs/test_pet_owner_path.py](#testsapiknown_bugstest_pet_owner_pathpy) | 1 |
-| **Total** | | **88** |
+| Bugs conhecidos | [tests/api/known_bugs/test_visit_description.py](#testsapiknown_bugstest_visit_descriptionpy) | 1 |
+| **Total** | | **89** |
 
 ## API
 
@@ -509,7 +510,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Passos** | 1. Para cada descrição, enviar POST /api/owners/{ownerId}/pets/{petId}/visits.<br>2. Verificar a resposta e as visitas do pet no banco. |
 | **Resultado esperado** | Status 400 e zero visitas. |
 | **Status** | Não executado |
-| **Observações** | Dicionário: o banco aceita as duas (NOT NULL recusa ausente, não vazio). |
+| **Observações** | Dicionário: o banco aceita as duas (NOT NULL recusa ausente, não vazio).<br>Hoje `'   '` é aceito: é o BUG-11 (CT-BUG-11-01). Na coleção do Postman entra só `''` (`CT-API-VISITS-03a`), para ela continuar sem falhas conhecidas. |
 
 #### CT-API-VISITS-04 — Descrição no limite de 255 caracteres
 
@@ -1411,3 +1412,22 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Resultado obtido** | Passo 2: 204. Passo 3: 201. Passo 4: nome e data alterados e uma visita a mais (BUGS.md). |
 | **Status** | Não executado |
 | **Observações** | Reproduzido do zero em 2026-11-19. Um caso parametrizado por pedido (`pytest.mark.parametrize`). Teardown: visita, pet, tipo e donos; cada remoção aceita "já removido". |
+
+### tests/api/known_bugs/test_visit_description.py
+
+#### CT-BUG-11-01 — [BUG-11] Descrição de visita só com espaços é recusada
+
+| Campo | Descrição |
+|---|---|
+| **Módulo / Área** | Bugs conhecidos › API › Visitas › Criação |
+| **Tipo de teste** | Funcional – negativo (validação) |
+| **Prioridade** | Média |
+| **Bug relacionado** | BUG-11 |
+| **Objetivo** | Garantir que a API não grava visita com descrição sem conteúdo visível. |
+| **Pré-condições** | Dono, tipo e pet criados via API. |
+| **Dados de teste** | description = `'   '`. |
+| **Passos** | 1. Contar as visitas no banco.<br>2. Enviar POST /api/owners/{ownerId}/pets/{petId}/visits.<br>3. Verificar a resposta.<br>4. Contar as visitas de novo. |
+| **Resultado esperado** | Passo 3: status 400 apontando o campo `description`.<br>Passo 4: mesma contagem do passo 1. |
+| **Resultado obtido** | Passo 3: status 201 com a descrição enviada. Passo 4: uma visita a mais, com a descrição só de espaços (BUGS.md). |
+| **Status** | Não executado |
+| **Observações** | Reproduzido do zero em 2026-11-20. O contrato não proíbe o valor (`description` não tem `pattern`); a regra é a mesma do CT-BUG-06-01. Teardown: visita, pet, tipo e dono; cada remoção aceita "já removido". |

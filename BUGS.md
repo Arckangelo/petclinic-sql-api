@@ -6,7 +6,7 @@ detalhes de cada um: passos, esperado, obtido, evidência no banco e, quando con
 Ambiente: `springcommunity/spring-petclinic-rest:latest` (4.0.2) com `postgres:16.3`, via `docker compose`. Todos
 reproduzidos do zero (`docker compose down -v` e `up -d --wait`). BUG-01, BUG-02 e BUG-03 foram reproduzidos de novo
 em 2026-11-15 na `4.0.2` republicada em 2026-11-14 (digest `sha256:daba846d…`); o BUG-04 foi reproduzido nela em
-2026-11-17, o BUG-05, o BUG-06, o BUG-07, o BUG-08 e o BUG-09, em 2026-11-18, e o BUG-10, em 2026-11-19.
+2026-11-17, o BUG-05, o BUG-06, o BUG-07, o BUG-08 e o BUG-09, em 2026-11-18, o BUG-10, em 2026-11-19, e o BUG-11, em 2026-11-20.
 
 | Bug | Resumo | Impacto | Issue |
 |:---|:---|:---|:---|
@@ -20,6 +20,7 @@ em 2026-11-15 na `4.0.2` republicada em 2026-11-14 (digest `sha256:daba846d…`)
 | [BUG-08](#bug-08--corpo-ilegível-responde-500-em-vez-de-400) | Corpo ilegível responde 500 em vez de 400 | médio | [#8](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/8) |
 | [BUG-09](#bug-09--id-negativo-na-url-responde-500-em-vez-de-400) | Id negativo na URL responde 500 em vez de 400 | médio | [#9](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/9) |
 | [BUG-10](#bug-10--dono-da-url-não-é-conferido-ao-alterar-pet-nem-ao-criar-visita) | Dono da URL não é conferido ao alterar pet nem ao criar visita | médio | [#10](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/10) |
+| [BUG-11](#bug-11--descrição-de-visita-só-com-espaços-é-aceita-e-gravada) | Descrição de visita só com espaços é aceita e gravada | baixo a médio | [#11](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/11) |
 
 ## BUG-01 · API responde 500 em vez de 400 quando o id do dono não é numérico
 
@@ -315,6 +316,31 @@ em 2026-11-15 na `4.0.2` republicada em 2026-11-14 (digest `sha256:daba846d…`)
 - **Impacto:** médio. Os dados de um pet e o histórico de visitas dele podem ser mudados pelo caminho de outro dono,
   e a API confirma a operação como se estivesse certa. Num sistema em que cada pessoa só acessa os próprios dados, isso
   permitiria alterar o pet de outra pessoa.
+
+## BUG-11 · Descrição de visita só com espaços é aceita e gravada
+
+- **Issue:** [#11](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/11)
+- **Passos:** `docker compose down -v` → `up -d --wait` → criar um dono, um tipo e um pet → contar as linhas de
+  `visits` → `POST /api/owners/{ownerId}/pets/{petId}/visits` com `"date": "2026-11-01"` e `"description": "   "` →
+  conferir a visita no banco e com `GET /api/pets/{petId}`.
+- **Esperado:** `400 Bad Request` apontando o campo `description`, sem gravar a visita, como acontece com `""`.
+- **Obtido:** `201 Created`, com `"description": "   "` na resposta, e uma linha nova em `visits`.
+
+  | Campo em `visits` | Valor gravado |
+  |:---|:---|
+  | `id` | 5 |
+  | `pet_id` | 14 (criado no teste) |
+  | `visit_date` | 2026-11-01 |
+  | `description` | 3 espaços (tamanho 3; vazio depois de tirar os espaços) |
+
+  Total de visitas: 4 antes e 5 depois. Um espaço e um tab também são aceitos e gravados. Com `""`, a API responde
+  `400` com `size must be between 1 and 255`.
+- **Evidência no banco:** a linha da visita criada, com a descrição só de espaços, e a contagem de `visits` antes e
+  depois. Reproduzido do zero em 2026-11-20, na imagem `4.0.2` (digest `sha256:daba846d…`).
+- **Relação com o contrato:** `description` de `VisitFields` só tem `minLength: 1` e `maxLength: 255`, sem `pattern`.
+  O contrato não proíbe o valor: o defeito é de regra de negócio, o mesmo do BUG-06 no nome do pet.
+- **Impacto:** baixo a médio. A visita aparece no histórico do pet sem descrever o atendimento. O banco não impede: a
+  coluna aceita texto só com espaços.
 
 ## Observações
 
