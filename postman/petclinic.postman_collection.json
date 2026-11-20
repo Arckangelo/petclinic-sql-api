@@ -2904,6 +2904,56 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "CT-API-VISITS-07a",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Cria um pet nascido em 2019 só para este teste: o do CT-API-PETS-01 nasceu\n// em 2020-05-10, e 29/02/2020 cairia antes do nascimento (BUG-12)\nconst base = pm.environment.get(\"baseUrl\");\nconst pet = {\n  name: \"Mel\",\n  birthDate: \"2019-01-15\",\n  type: { id: Number(pm.collectionVariables.get(\"petTypeId\")), name: pm.collectionVariables.get(\"petTypeName\") }\n};\n\npm.sendRequest({\n  url: base + \"/owners/\" + pm.collectionVariables.get(\"ownerId\") + \"/pets\",\n  method: \"POST\",\n  header: { \"Content-Type\": \"application/json\" },\n  body: { mode: \"raw\", raw: JSON.stringify(pet) }\n}, (err, res) => {\n  if (err) throw err;\n  if (res.code !== 201) throw new Error(\"Preparação falhou: POST do pet devolveu \" + res.code);\n  pm.collectionVariables.set(\"leapPetId\", res.json().id);\n});\n"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const base = pm.environment.get(\"baseUrl\");\nconst petId = pm.collectionVariables.get(\"leapPetId\");\nconst sent = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));\nconst body = pm.response.json();\n\npm.test(\"status 201\", () => pm.response.to.have.status(201));\n\npm.test(\"data na resposta igual à enviada\", () => {\n  pm.expect(body.date).to.eql(sent.date);\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// O pet tem de ter nascido antes da visita, senão o teste esbarra no BUG-12\npm.sendRequest(base + \"/pets/\" + petId, (err, res) => {\n  pm.test(\"pet nasceu antes da data da visita\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(200);\n    const birth = res.json().birthDate;\n    pm.expect(birth < sent.date, birth + \" deveria ser antes de \" + sent.date).to.be.true;\n  });\n});\n\n// Confere o que ficou gravado, buscando a visita de novo\npm.sendRequest(base + \"/visits/\" + body.id, (err, res) => {\n  pm.test(\"data gravada igual à enviada, no pet do teste\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(200);\n    pm.expect(res.json().date).to.eql(sent.date);\n    pm.expect(String(res.json().petId)).to.eql(String(petId));\n  });\n});\n\n// Visita criada por este request, para apagar no fim do fluxo\npm.collectionVariables.set(\"leapVisitId\", body.id);\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"date\": \"2020-02-29\",\n    \"description\": \"Consulta de rotina\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/owners/{{ownerId}}/pets/{{leapPetId}}/visits",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners",
+                "{{ownerId}}",
+                "pets",
+                "{{leapPetId}}",
+                "visits"
+              ]
+            }
+          },
+          "response": []
         }
       ]
     },
@@ -3021,6 +3071,35 @@
                 "type": "text/javascript",
                 "exec": [
                   "// URL já com o id real (ex.: http://localhost:9966/petclinic/api/visits/9)\nconst url = pm.variables.replaceIn(pm.request.url.toString());\n\n// \"Já removido\" também é sucesso para uma limpeza\npm.test(\"visita apagada ou já removida (204 ou 404)\", () => {\n  pm.expect(pm.response.code).to.be.oneOf([204, 404]);\n});\n\n// Confere que a visita não existe mais\npm.sendRequest(url, (err, res) => {\n  pm.test(\"visita não existe mais (GET devolve 404)\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(404);\n  });\n});\n"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Limpeza: CT-API-VISITS-07a",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/visits/{{leapVisitId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "visits",
+                "{{leapVisitId}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Apaga na ordem das chaves estrangeiras: a visita antes do pet\nconst base = pm.environment.get(\"baseUrl\");\nconst visitUrl = pm.variables.replaceIn(pm.request.url.toString());\nconst petUrl = base + \"/pets/\" + pm.collectionVariables.get(\"leapPetId\");\n\n// \"Já removido\" também é sucesso para uma limpeza\npm.test(\"visita apagada ou já removida (204 ou 404)\", () => {\n  pm.expect(pm.response.code).to.be.oneOf([204, 404]);\n});\n\npm.sendRequest(visitUrl, (err, res) => {\n  pm.test(\"visita não existe mais (GET devolve 404)\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(404);\n  });\n\n  // Depois apaga o pet criado só para este teste\n  pm.sendRequest({ url: petUrl, method: \"DELETE\" }, (delErr, delRes) => {\n    pm.test(\"pet apagado ou já removido (204 ou 404)\", () => {\n      pm.expect(delErr).to.be.null;\n      pm.expect(delRes.code).to.be.oneOf([204, 404]);\n    });\n\n    pm.sendRequest(petUrl, (getErr, getRes) => {\n      pm.test(\"pet não existe mais (GET devolve 404)\", () => {\n        pm.expect(getErr).to.be.null;\n        pm.expect(getRes.code).to.eql(404);\n      });\n    });\n  });\n});\n"
                 ]
               }
             }
@@ -3855,6 +3934,14 @@
     },
     {
       "key": "futureVisitId",
+      "value": ""
+    },
+    {
+      "key": "leapPetId",
+      "value": ""
+    },
+    {
+      "key": "leapVisitId",
       "value": ""
     }
   ]

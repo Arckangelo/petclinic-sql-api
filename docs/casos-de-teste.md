@@ -570,7 +570,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Passos** | 1. Para cada data, enviar POST /api/owners/{ownerId}/pets/{petId}/visits.<br>2. Verificar a resposta e o banco. |
 | **Resultado esperado** | 2020-02-29: status 201 e data gravada igual.<br>2021-02-29: status 400 e nenhuma visita nova. |
 | **Status** | Não executado |
-| **Observações** | Dicionário: o banco aceita 2020-02-29 e recusa 2021-02-29. |
+| **Observações** | Dicionário: o banco aceita 2020-02-29 e recusa 2021-02-29.<br>Em 2026-11-20, a API aceitou 2020-02-29 (201, data exata), mas respondeu 500 para 2021-02-29, sem gravar nada: é o BUG-08 (CT-BUG-08-01). Na coleção do Postman entra só o ano bissexto (`CT-API-VISITS-07a`), para ela continuar sem falhas conhecidas. O pet do CT-API-PETS-01 nasceu em 2020-05-10, então o 07a cria um pet nascido em 2019 só para ele, para a data não cair antes do nascimento (BUG-12). |
 
 #### CT-API-VISITS-08 — Data fora do formato ISO
 
@@ -1369,13 +1369,13 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Prioridade** | Média |
 | **Bug relacionado** | BUG-08 |
 | **Objetivo** | Garantir que um corpo que não pode ser lido é tratado como erro do cliente, sem expor detalhes internos. |
-| **Pré-condições** | Dono e tipo criados via API. |
-| **Dados de teste** | Pet com birthDate `'2020-02-30'`, `'04/03/2010'` e `'ontem'`; pet com `type.id` em texto; dono com JSON quebrado. |
-| **Passos** | 1. Contar as linhas de `owners` e `pets`.<br>2. Enviar cada pedido.<br>3. Verificar cada resposta.<br>4. Contar as linhas de novo. |
+| **Pré-condições** | Dono, tipo e pet (nascido antes de 2021) criados via API. |
+| **Dados de teste** | Pet com birthDate `'2020-02-30'`, `'04/03/2010'` e `'ontem'`; pet com `type.id` em texto; dono com JSON quebrado; visita com date `'2021-02-29'` (CT-API-VISITS-07). |
+| **Passos** | 1. Contar as linhas de `owners`, `pets` e `visits`.<br>2. Enviar cada pedido.<br>3. Verificar cada resposta.<br>4. Contar as linhas de novo. |
 | **Resultado esperado** | Passo 3: status 400 em todos, sem nome de exceção Java no corpo.<br>Passo 4: mesmas contagens do passo 1. |
 | **Resultado obtido** | Passo 3: status 500 com `HttpMessageNotReadableException`. Passo 4: contagens iguais (BUGS.md). |
 | **Status** | Não executado |
-| **Observações** | Reproduzido do zero em 2026-11-18. Um caso parametrizado por pedido (`pytest.mark.parametrize`). Teardown: dono e tipo; cada remoção aceita "já removido". |
+| **Observações** | Reproduzido do zero em 2026-11-18. Um caso parametrizado por pedido (`pytest.mark.parametrize`). Teardown: pet, dono e tipo; cada remoção aceita "já removido". |
 
 ### tests/api/known_bugs/test_path_id.py
 
