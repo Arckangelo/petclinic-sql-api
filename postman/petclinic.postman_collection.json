@@ -2854,6 +2854,56 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "CT-API-VISITS-06",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Hoje + 30 dias em UTC, o fuso da API\nfunction dateIn30Days() {\n  const d = new Date();\n  d.setUTCDate(d.getUTCDate() + 30);\n  return d.toISOString().slice(0, 10);\n}\n\npm.collectionVariables.set(\"visitDate\", dateIn30Days());\n"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Hoje + 30 dias em UTC, o fuso da API\nfunction dateIn30Days() {\n  const d = new Date();\n  d.setUTCDate(d.getUTCDate() + 30);\n  return d.toISOString().slice(0, 10);\n}\n\nconst sent = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));\nconst body = pm.response.json();\n\npm.test(\"data enviada é hoje + 30 dias\", () => {\n  pm.expect(sent.date).to.eql(dateIn30Days());\n});\n\npm.test(\"status 201\", () => pm.response.to.have.status(201));\n\npm.test(\"data na resposta igual à enviada\", () => {\n  pm.expect(body.date).to.eql(sent.date);\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// Confere o que ficou gravado, buscando a visita de novo\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/visits/\" + body.id, (err, res) => {\n  pm.test(\"data gravada igual à enviada\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(200);\n    pm.expect(res.json().date).to.eql(sent.date);\n  });\n});\n\n// Visita criada por este request, para apagar no fim do fluxo\npm.collectionVariables.set(\"futureVisitId\", body.id);\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"date\": \"{{visitDate}}\",\n    \"description\": \"Consulta agendada\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/owners/{{ownerId}}/pets/{{petId}}/visits",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners",
+                "{{ownerId}}",
+                "pets",
+                "{{petId}}",
+                "visits"
+              ]
+            }
+          },
+          "response": []
         }
       ]
     },
@@ -2931,6 +2981,35 @@
               "path": [
                 "visits",
                 "{{birthVisitId}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// URL já com o id real (ex.: http://localhost:9966/petclinic/api/visits/9)\nconst url = pm.variables.replaceIn(pm.request.url.toString());\n\n// \"Já removido\" também é sucesso para uma limpeza\npm.test(\"visita apagada ou já removida (204 ou 404)\", () => {\n  pm.expect(pm.response.code).to.be.oneOf([204, 404]);\n});\n\n// Confere que a visita não existe mais\npm.sendRequest(url, (err, res) => {\n  pm.test(\"visita não existe mais (GET devolve 404)\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(404);\n  });\n});\n"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Limpeza: CT-API-VISITS-06",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/visits/{{futureVisitId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "visits",
+                "{{futureVisitId}}"
               ]
             }
           },
@@ -3772,6 +3851,10 @@
     },
     {
       "key": "birthVisitId",
+      "value": ""
+    },
+    {
+      "key": "futureVisitId",
       "value": ""
     }
   ]

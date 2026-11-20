@@ -555,7 +555,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Passos** | 1. Enviar POST /api/owners/{ownerId}/pets/{petId}/visits.<br>2. Verificar a resposta e o banco. |
 | **Resultado esperado** | Status 201 e visit_date gravada igual à enviada. |
 | **Status** | Não executado |
-| **Observações** | Exceção à regra geral de recusa: visita futura é agendamento (fase 6, "agendar visita").<br>Regra a confirmar: se haverá um limite máximo de antecedência. |
+| **Observações** | Exceção à regra geral de recusa: visita futura é agendamento (fase 6, "agendar visita").<br>Regra a confirmar: se haverá um limite máximo de antecedência. Hoje não há limite: em 2026-11-20, hoje + 1 ano, 2099-12-31 e 9999-12-31 também foram aceitas. |
 
 #### CT-API-VISITS-07 — 29 de fevereiro em ano bissexto e não bissexto
 
