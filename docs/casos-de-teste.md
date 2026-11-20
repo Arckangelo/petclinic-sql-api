@@ -452,13 +452,13 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Módulo / Área** | API › Pets › Exclusão |
 | **Tipo de teste** | Funcional – regra de negócio |
 | **Prioridade** | Alta |
-| **Objetivo** | Garantir que a API não apaga um pet que tem visitas e que não deixa remoção pela metade. |
-| **Pré-condições** | Dono, tipo, pet e uma visita criados via API. |
-| **Dados de teste** | Id do pet. |
-| **Passos** | 1. Enviar DELETE /api/pets/{petId}.<br>2. Verificar a resposta.<br>3. Conferir no banco o pet e a visita. |
-| **Resultado esperado** | Passo 2: status 4xx (409).<br>Passo 3: pet e visita continuam no banco. |
+| **Objetivo** | Garantir que apagar um pet remove junto as visitas dele, sem deixar remoção pela metade nem afetar outros registros. |
+| **Pré-condições** | Dono e tipo criados via API; um pet com duas visitas e outro pet do mesmo dono com uma visita. |
+| **Dados de teste** | Id do pet com duas visitas. |
+| **Passos** | 1. Guardar os totais de pets e visitas.<br>2. Enviar DELETE /api/pets/{petId}.<br>3. Verificar a resposta.<br>4. Conferir no banco o pet, as visitas dele, os totais, o outro pet com a visita dele, o dono e o tipo. |
+| **Resultado esperado** | Passo 3: status 204.<br>Passo 4: o pet e as duas visitas dele não existem mais; `pets` tem uma linha a menos e `visits` tem duas a menos; o outro pet, a visita dele, o dono e o tipo continuam. |
 | **Status** | Não executado |
-| **Observações** | Dicionário: a chave `visits_pet_id_fkey` recusa no banco.<br>Regra a confirmar: a alternativa é apagar pet e visitas juntos. Em qualquer regra, nunca 500 e nunca remoção parcial. |
+| **Observações** | Regra adotada em 2026-11-19: apagar o pet e as visitas dele juntos, a mesma regra do CT-API-OWNERS-10. O contrato não diz o que acontece com as visitas nem prevê 409, e esse é o comportamento observado da API. A chave estrangeira `visits_pet_id_fkey` recusaria a exclusão no banco, então quem remove as visitas é a API.<br>Na coleção do Postman: `CT-API-PETS-13`. |
 
 ### tests/api/test_visits.py
 

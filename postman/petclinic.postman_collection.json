@@ -2470,6 +2470,44 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "CT-API-PETS-13",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Cria dois pets no dono do CT-API-OWNERS-01: o do teste, com duas visitas,\n// e outro com uma visita, que não pode ser afetado\nconst base = pm.environment.get(\"baseUrl\");\nconst ownerPath = \"/owners/\" + pm.collectionVariables.get(\"ownerId\") + \"/pets\";\nconst type = { id: Number(pm.collectionVariables.get(\"petTypeId\")), name: pm.collectionVariables.get(\"petTypeName\") };\n\nfunction post(path, data, next) {\n  pm.sendRequest({\n    url: base + path,\n    method: \"POST\",\n    header: { \"Content-Type\": \"application/json\" },\n    body: { mode: \"raw\", raw: JSON.stringify(data) }\n  }, (err, res) => {\n    if (err) throw err;\n    if (res.code !== 201) throw new Error(\"Preparação falhou: POST \" + path + \" devolveu \" + res.code);\n    next(res.json());\n  });\n}\n\nfunction saveCounts(resources, counts) {\n  if (resources.length === 0) {\n    pm.collectionVariables.set(\"visitedPetCountsBefore\", JSON.stringify(counts));\n    return;\n  }\n  pm.sendRequest(base + \"/\" + resources[0], (err, res) => {\n    if (err) throw err;\n    counts[resources[0]] = res.json().length;\n    saveCounts(resources.slice(1), counts);\n  });\n}\n\npost(ownerPath, { name: \"Rex\", birthDate: \"2020-05-10\", type: type }, (pet) => {\n  pm.collectionVariables.set(\"visitedPetId\", pet.id);\n  const visitsPath = ownerPath + \"/\" + pet.id + \"/visits\";\n  post(visitsPath, { date: \"2026-11-01\", description: \"Consulta de rotina\" }, (first) => {\n    post(visitsPath, { date: \"2026-11-02\", description: \"Retorno\" }, (second) => {\n      pm.collectionVariables.set(\"visitedPetVisitIds\", JSON.stringify([first.id, second.id]));\n      post(ownerPath, { name: \"Bidu\", birthDate: \"2020-05-10\", type: type }, (sibling) => {\n        pm.collectionVariables.set(\"siblingPetId\", sibling.id);\n        post(ownerPath + \"/\" + sibling.id + \"/visits\", { date: \"2026-11-03\", description: \"Vacina\" }, (visit) => {\n          pm.collectionVariables.set(\"siblingVisitId\", visit.id);\n          saveCounts([\"pets\", \"visits\"], {});\n        });\n      });\n    });\n  });\n});\n"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// DELETE devolve 204 sem corpo: não use pm.response.json() aqui\nconst base = pm.environment.get(\"baseUrl\");\nconst petId = pm.collectionVariables.get(\"visitedPetId\");\nconst visitIds = JSON.parse(pm.collectionVariables.get(\"visitedPetVisitIds\"));\nconst siblingPetId = pm.collectionVariables.get(\"siblingPetId\");\nconst siblingVisitId = Number(pm.collectionVariables.get(\"siblingVisitId\"));\nconst ownerId = pm.collectionVariables.get(\"ownerId\");\nconst typeId = pm.collectionVariables.get(\"petTypeId\");\nconst before = JSON.parse(pm.collectionVariables.get(\"visitedPetCountsBefore\"));\n\npm.test(\"status 204\", () => pm.response.to.have.status(204));\n\npm.test(\"resposta sem corpo\", () => {\n  pm.expect(pm.response.text()).to.be.empty;\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// Regra adotada: o pet e as visitas dele saem juntos, sem remoção pela metade\npm.sendRequest(base + \"/pets/\" + petId, (err, res) => {\n  pm.test(\"pet não existe mais (GET devolve 404)\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(404);\n  });\n});\n\nvisitIds.forEach((visitId, index) => {\n  pm.sendRequest(base + \"/visits/\" + visitId, (err, res) => {\n    pm.test(\"visita \" + (index + 1) + \" do pet não existe mais (GET devolve 404)\", () => {\n      pm.expect(err).to.be.null;\n      pm.expect(res.code).to.eql(404);\n    });\n  });\n});\n\npm.sendRequest(base + \"/pets\", (err, res) => {\n  pm.test(\"lista de pets tem exatamente um a menos\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.json().length).to.eql(before.pets - 1);\n  });\n});\n\npm.sendRequest(base + \"/visits\", (err, res) => {\n  pm.test(\"lista de visitas perdeu exatamente as visitas do pet\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.json().length).to.eql(before.visits - visitIds.length);\n  });\n});\n\n// O resto não pode ser afetado\npm.sendRequest(base + \"/pets/\" + siblingPetId, (err, res) => {\n  pm.test(\"outro pet do dono continua, com a visita dele\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(200);\n    pm.expect(res.json().visits.map((v) => v.id)).to.include(siblingVisitId);\n  });\n});\n\npm.sendRequest(base + \"/owners/\" + ownerId, (err, res) => {\n  pm.test(\"dono continua\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(200);\n  });\n});\n\npm.sendRequest(base + \"/pettypes/\" + typeId, (err, res) => {\n  pm.test(\"tipo do pet continua\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(200);\n  });\n});\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/pets/{{visitedPetId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pets",
+                "{{visitedPetId}}"
+              ]
+            }
+          },
+          "response": []
         }
       ]
     },
@@ -2749,6 +2787,35 @@
                 "type": "text/javascript",
                 "exec": [
                   "// URL já com o id real (ex.: http://localhost:9966/petclinic/api/pets/22)\nconst url = pm.variables.replaceIn(pm.request.url.toString());\n\n// \"Já removido\" também é sucesso para uma limpeza\npm.test(\"pet apagado ou já removido (204 ou 404)\", () => {\n  pm.expect(pm.response.code).to.be.oneOf([204, 404]);\n});\n\n// Confere que o pet não existe mais\npm.sendRequest(url, (err, res) => {\n  pm.test(\"pet não existe mais (GET devolve 404)\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(404);\n  });\n});\n"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Limpeza: CT-API-PETS-13",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/visits/{{siblingVisitId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "visits",
+                "{{siblingVisitId}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Apaga na ordem das chaves estrangeiras: visitas antes dos pets.\n// Numa execução normal, o pet do teste e as visitas dele já saíram (404).\nconst base = pm.environment.get(\"baseUrl\");\nconst steps = [{ path: \"visits\", id: pm.collectionVariables.get(\"siblingVisitId\") }]\n  .concat(JSON.parse(pm.collectionVariables.get(\"visitedPetVisitIds\")).map((id) => ({ path: \"visits\", id: id })))\n  .concat([\n    { path: \"pets\", id: pm.collectionVariables.get(\"visitedPetId\") },\n    { path: \"pets\", id: pm.collectionVariables.get(\"siblingPetId\") }\n  ]);\n\nfunction checkDeleted(code, step) {\n  pm.test(step.path + \"/\" + step.id + \": apagado ou já removido (204 ou 404)\", () => {\n    pm.expect(code).to.be.oneOf([204, 404]);\n  });\n}\n\nfunction confirmGone(index) {\n  const step = steps[index];\n  pm.sendRequest(base + \"/\" + step.path + \"/\" + step.id, (err, res) => {\n    pm.test(step.path + \"/\" + step.id + \": não existe mais (GET devolve 404)\", () => {\n      pm.expect(err).to.be.null;\n      pm.expect(res.code).to.eql(404);\n    });\n\n    const next = steps[index + 1];\n    if (!next) return;\n    pm.sendRequest({ url: base + \"/\" + next.path + \"/\" + next.id, method: \"DELETE\" }, (delErr, delRes) => {\n      if (delErr) throw delErr;\n      checkDeleted(delRes.code, next);\n      confirmGone(index + 1);\n    });\n  });\n}\n\ncheckDeleted(pm.response.code, steps[0]);\nconfirmGone(0);\n"
                 ]
               }
             }
@@ -3307,6 +3374,26 @@
     },
     {
       "key": "ownerPetIdsBefore",
+      "value": ""
+    },
+    {
+      "key": "visitedPetId",
+      "value": ""
+    },
+    {
+      "key": "visitedPetVisitIds",
+      "value": ""
+    },
+    {
+      "key": "siblingPetId",
+      "value": ""
+    },
+    {
+      "key": "siblingVisitId",
+      "value": ""
+    },
+    {
+      "key": "visitedPetCountsBefore",
       "value": ""
     }
   ]
