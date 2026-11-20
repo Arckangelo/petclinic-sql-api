@@ -2704,6 +2704,106 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "CT-API-VISITS-04a",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Descrição com exatamente 255 caracteres, o limite do contrato\npm.collectionVariables.set(\"visitDescription\", \"a\".repeat(255));\n"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const sent = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));\nconst body = pm.response.json();\n\npm.test(\"descrição enviada tem 255 caracteres\", () => {\n  pm.expect(sent.description).to.have.lengthOf(255);\n});\n\npm.test(\"status 201\", () => pm.response.to.have.status(201));\n\npm.test(\"descrição na resposta igual à enviada\", () => {\n  pm.expect(body.description).to.eql(sent.description);\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// Confere o que ficou gravado, buscando a visita de novo\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/visits/\" + body.id, (err, res) => {\n  pm.test(\"descrição gravada inteira, igual à enviada\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(200);\n    pm.expect(res.json().description).to.eql(sent.description);\n  });\n});\n\n// Visita criada por este request, para apagar no fim do fluxo\npm.collectionVariables.set(\"limitVisitId\", body.id);\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"date\": \"2026-11-01\",\n    \"description\": \"{{visitDescription}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/owners/{{ownerId}}/pets/{{petId}}/visits",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners",
+                "{{ownerId}}",
+                "pets",
+                "{{petId}}",
+                "visits"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "CT-API-VISITS-04b",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Descrição com 256 caracteres, um acima do limite do contrato\npm.collectionVariables.set(\"visitDescription\", \"a\".repeat(256));\n\n// Quantas visitas existem antes do POST\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/visits\", (err, res) => {\n  if (err) throw err;\n  pm.collectionVariables.set(\"visitsCountBefore\", res.json().length);\n});\n"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const sent = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));\nconst countBefore = Number(pm.collectionVariables.get(\"visitsCountBefore\"));\n\npm.test(\"descrição enviada tem 256 caracteres\", () => {\n  pm.expect(sent.description).to.have.lengthOf(256);\n});\n\npm.test(\"status 400\", () => pm.response.to.have.status(400));\n\n// O 400 tem de ser pela descrição, não por outro campo\npm.test(\"erro aponta o campo description com o valor enviado\", () => {\n  const errors = pm.response.json().schemaValidationErrors;\n  pm.expect(errors, \"lista de erros de validação\").to.be.an(\"array\").and.not.empty;\n  errors.forEach((e) => {\n    pm.expect(e.field).to.eql(\"description\");\n    pm.expect(e.rejectedValue).to.eql(sent.description);\n  });\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// Nenhuma visita pode ter sido criada\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/visits\", (err, res) => {\n  pm.test(\"quantidade de visitas não mudou\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.json().length).to.eql(countBefore);\n  });\n});\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"date\": \"2026-11-01\",\n    \"description\": \"{{visitDescription}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/owners/{{ownerId}}/pets/{{petId}}/visits",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners",
+                "{{ownerId}}",
+                "pets",
+                "{{petId}}",
+                "visits"
+              ]
+            }
+          },
+          "response": []
         }
       ]
     },
@@ -2723,6 +2823,35 @@
               "path": [
                 "visits",
                 "{{visitId}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// URL já com o id real (ex.: http://localhost:9966/petclinic/api/visits/9)\nconst url = pm.variables.replaceIn(pm.request.url.toString());\n\n// \"Já removido\" também é sucesso para uma limpeza\npm.test(\"visita apagada ou já removida (204 ou 404)\", () => {\n  pm.expect(pm.response.code).to.be.oneOf([204, 404]);\n});\n\n// Confere que a visita não existe mais\npm.sendRequest(url, (err, res) => {\n  pm.test(\"visita não existe mais (GET devolve 404)\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(404);\n  });\n});\n"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Limpeza: CT-API-VISITS-04a",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/visits/{{limitVisitId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "visits",
+                "{{limitVisitId}}"
               ]
             }
           },
@@ -3548,6 +3677,14 @@
     },
     {
       "key": "visitsCountBefore",
+      "value": ""
+    },
+    {
+      "key": "visitDescription",
+      "value": ""
+    },
+    {
+      "key": "limitVisitId",
       "value": ""
     }
   ]
