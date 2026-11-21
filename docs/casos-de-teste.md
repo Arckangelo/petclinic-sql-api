@@ -598,9 +598,9 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Pré-condições** | Dono, tipo e pet criados via API. |
 | **Dados de teste** | A mesma visita (data e descrição) enviada duas vezes. |
 | **Passos** | 1. Enviar POST /api/owners/{ownerId}/pets/{petId}/visits.<br>2. Enviar o mesmo POST de novo.<br>3. Contar as visitas do pet com essa data e descrição no banco. |
-| **Resultado esperado** | Passo 1: status 201.<br>Passo 2: status 4xx (409).<br>Passo 3: uma linha. |
+| **Resultado esperado** | Passo 1: status 201.<br>Passo 2: status 201, com outro id.<br>Passo 3: duas linhas, uma de cada envio, e a primeira sem mudança. |
 | **Status** | Não executado |
-| **Observações** | Dicionário: o banco aceita a duplicata.<br>Regra a confirmar: duas visitas iguais no mesmo dia podem ser legítimas. |
+| **Observações** | Dicionário: o banco aceita a duplicata.<br>Regra adotada em 2026-11-21: visitas iguais são permitidas e cada envio é uma visita nova, porque duas visitas no mesmo dia com a mesma descrição podem ser legítimas (um curativo de manhã e outro à tarde). O contrato também não prevê 409 nesse endpoint, só 201, 400, 404 e 500. O risco que o teste cobre é o segundo envio sobrescrever o primeiro (como no BUG-04) ou ser descartado. Na coleção do Postman: `CT-API-VISITS-09a`. |
 
 #### CT-API-VISITS-10 — Criar visita para pet inexistente
 

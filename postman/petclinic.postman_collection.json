@@ -2954,6 +2954,56 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "CT-API-VISITS-09a",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Cria a primeira visita com o mesmo corpo deste request; o request envia de novo\npm.sendRequest({\n  url: pm.variables.replaceIn(pm.request.url.toString()),\n  method: \"POST\",\n  header: { \"Content-Type\": \"application/json\" },\n  body: { mode: \"raw\", raw: pm.variables.replaceIn(pm.request.body.raw) }\n}, (err, res) => {\n  if (err) throw err;\n  if (res.code !== 201) throw new Error(\"Preparação falhou: primeiro POST da visita devolveu \" + res.code);\n  pm.collectionVariables.set(\"firstDuplicateVisitId\", res.json().id);\n});\n"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const base = pm.environment.get(\"baseUrl\");\nconst firstId = pm.collectionVariables.get(\"firstDuplicateVisitId\");\nconst sent = JSON.parse(pm.variables.replaceIn(pm.request.body.raw));\nconst body = pm.response.json();\n\npm.test(\"status 201\", () => pm.response.to.have.status(201));\n\npm.test(\"visita nova, com id diferente do da primeira\", () => {\n  pm.expect(body.id).to.be.a(\"number\");\n  pm.expect(String(body.id)).to.not.eql(String(firstId));\n});\n\npm.test(\"data e descrição na resposta iguais às enviadas\", () => {\n  pm.expect(body.date, \"date\").to.eql(sent.date);\n  pm.expect(body.description, \"description\").to.eql(sent.description);\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// As duas visitas iguais têm de existir no pet: nenhuma sobrescrita, nenhuma descartada\npm.sendRequest(base + \"/pets/\" + pm.collectionVariables.get(\"petId\"), (err, res) => {\n  pm.test(\"pet tem as duas visitas iguais, a primeira e a nova\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(200);\n    const same = res.json().visits\n      .filter((v) => v.date === sent.date && v.description === sent.description)\n      .map((v) => String(v.id))\n      .sort();\n    pm.expect(same).to.eql([String(firstId), String(body.id)].sort());\n  });\n});\n\n// Visita criada por este request, para apagar no fim do fluxo\npm.collectionVariables.set(\"duplicateVisitId\", body.id);\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"date\": \"2026-11-05\",\n    \"description\": \"Curativo\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/owners/{{ownerId}}/pets/{{petId}}/visits",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners",
+                "{{ownerId}}",
+                "pets",
+                "{{petId}}",
+                "visits"
+              ]
+            }
+          },
+          "response": []
         }
       ]
     },
@@ -3100,6 +3150,35 @@
                 "type": "text/javascript",
                 "exec": [
                   "// Apaga na ordem das chaves estrangeiras: a visita antes do pet\nconst base = pm.environment.get(\"baseUrl\");\nconst visitUrl = pm.variables.replaceIn(pm.request.url.toString());\nconst petUrl = base + \"/pets/\" + pm.collectionVariables.get(\"leapPetId\");\n\n// \"Já removido\" também é sucesso para uma limpeza\npm.test(\"visita apagada ou já removida (204 ou 404)\", () => {\n  pm.expect(pm.response.code).to.be.oneOf([204, 404]);\n});\n\npm.sendRequest(visitUrl, (err, res) => {\n  pm.test(\"visita não existe mais (GET devolve 404)\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(404);\n  });\n\n  // Depois apaga o pet criado só para este teste\n  pm.sendRequest({ url: petUrl, method: \"DELETE\" }, (delErr, delRes) => {\n    pm.test(\"pet apagado ou já removido (204 ou 404)\", () => {\n      pm.expect(delErr).to.be.null;\n      pm.expect(delRes.code).to.be.oneOf([204, 404]);\n    });\n\n    pm.sendRequest(petUrl, (getErr, getRes) => {\n      pm.test(\"pet não existe mais (GET devolve 404)\", () => {\n        pm.expect(getErr).to.be.null;\n        pm.expect(getRes.code).to.eql(404);\n      });\n    });\n  });\n});\n"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Limpeza: CT-API-VISITS-09a",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/visits/{{duplicateVisitId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "visits",
+                "{{duplicateVisitId}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Apaga as duas visitas: a deste request (na URL) e a criada no Before request\nconst base = pm.environment.get(\"baseUrl\");\nconst url = pm.variables.replaceIn(pm.request.url.toString());\nconst firstUrl = base + \"/visits/\" + pm.collectionVariables.get(\"firstDuplicateVisitId\");\n\n// \"Já removido\" também é sucesso para uma limpeza\npm.test(\"segunda visita apagada ou já removida (204 ou 404)\", () => {\n  pm.expect(pm.response.code).to.be.oneOf([204, 404]);\n});\n\npm.sendRequest(url, (err, res) => {\n  pm.test(\"segunda visita não existe mais (GET devolve 404)\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(404);\n  });\n\n  pm.sendRequest({ url: firstUrl, method: \"DELETE\" }, (delErr, delRes) => {\n    pm.test(\"primeira visita apagada ou já removida (204 ou 404)\", () => {\n      pm.expect(delErr).to.be.null;\n      pm.expect(delRes.code).to.be.oneOf([204, 404]);\n    });\n\n    pm.sendRequest(firstUrl, (getErr, getRes) => {\n      pm.test(\"primeira visita não existe mais (GET devolve 404)\", () => {\n        pm.expect(getErr).to.be.null;\n        pm.expect(getRes.code).to.eql(404);\n      });\n    });\n  });\n});\n"
                 ]
               }
             }
@@ -3942,6 +4021,14 @@
     },
     {
       "key": "leapVisitId",
+      "value": ""
+    },
+    {
+      "key": "firstDuplicateVisitId",
+      "value": ""
+    },
+    {
+      "key": "duplicateVisitId",
       "value": ""
     }
   ]
