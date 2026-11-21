@@ -444,3 +444,7 @@ Diferenças que não quebram o funcionamento, mas ficam registradas.
 - **Por que não é bug:** o `404` está no contrato, atende ao `CT-API-PETS-09` e nenhum dado é gravado.
 - **Ponto de atenção:** quem protege o dado é a restrição do banco, não uma validação da API. A resposta não diz que
   o problema é o tipo e expõe o nome da exceção.
+- **Mesmo padrão em visitas (visto em 2026-11-21):** `POST /api/owners/1/pets/14/visits`, com `14` igual ao maior id de
+  `pets` + 1, também responde `404` com `DataIntegrityViolationException`. O log mostra que a API tenta o `insert into
+  visits` com `pet_id` 14, e a chave `visits_pet_id_fkey` recusa. `visits` continua com 4 linhas. Atende ao
+  `CT-API-VISITS-10`, mas, de novo, quem barra é o banco.

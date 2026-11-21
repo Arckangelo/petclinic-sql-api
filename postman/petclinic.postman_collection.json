@@ -3004,6 +3004,56 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "CT-API-VISITS-10",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Descobre um id de pet que não existe: o maior id atual + 1\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/pets\", (err, res) => {\n  if (err) throw err;\n  const ids = res.json().map((pet) => pet.id);\n  pm.collectionVariables.set(\"nonexistentPetId\", Math.max(...ids) + 1);\n});\n\n// Quantas visitas existem antes do POST\npm.sendRequest(pm.environment.get(\"baseUrl\") + \"/visits\", (err, res) => {\n  if (err) throw err;\n  pm.collectionVariables.set(\"visitsCountBefore\", res.json().length);\n});\n"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const baseUrl = pm.environment.get(\"baseUrl\");\nconst petId = pm.collectionVariables.get(\"nonexistentPetId\");\nconst countBefore = Number(pm.collectionVariables.get(\"visitsCountBefore\"));\n\npm.test(\"status 404\", () => pm.response.to.have.status(404));\n\npm.test(\"resposta não traz dados de visita\", () => {\n  pm.expect(pm.response.text()).to.not.include(\"petId\");\n});\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// Nenhuma visita pode ter sido criada\npm.sendRequest(baseUrl + \"/visits\", (err, res) => {\n  pm.test(\"quantidade de visitas não mudou\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.json().length).to.eql(countBefore);\n  });\n});\n\n// O POST não pode ter criado o pet\npm.sendRequest(baseUrl + \"/pets/\" + petId, (err, res) => {\n  pm.test(\"pet continua inexistente\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(404);\n  });\n});\n"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"date\": \"2026-11-01\",\n    \"description\": \"Consulta de rotina\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/owners/{{ownerId}}/pets/{{nonexistentPetId}}/visits",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "owners",
+                "{{ownerId}}",
+                "pets",
+                "{{nonexistentPetId}}",
+                "visits"
+              ]
+            }
+          },
+          "response": []
         }
       ]
     },
@@ -4029,6 +4079,10 @@
     },
     {
       "key": "duplicateVisitId",
+      "value": ""
+    },
+    {
+      "key": "nonexistentPetId",
       "value": ""
     }
   ]

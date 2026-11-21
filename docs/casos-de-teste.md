@@ -615,7 +615,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Passos** | 1. Contar as linhas de `visits`.<br>2. Enviar POST /api/owners/{ownerId}/pets/{petId inexistente}/visits.<br>3. Verificar a resposta e contar de novo. |
 | **Resultado esperado** | Status 404 e mesma contagem. |
 | **Status** | Não executado |
-| **Observações** | Dicionário: a chave `visits_pet_id_fkey` recusa no banco. |
+| **Observações** | Dicionário: a chave `visits_pet_id_fkey` recusa no banco.<br>Em 2026-11-21, a API respondeu 404 e não gravou nada, mas com `DataIntegrityViolationException`: ela tenta gravar a visita e quem recusa é a chave do banco, o mesmo padrão da OBS-02. Com dono e pet inexistentes, a resposta é a mesma, porque o dono da URL não é conferido (BUG-10). Na coleção do Postman: `CT-API-VISITS-10`. |
 
 #### CT-API-VISITS-11 — Criar visita pelo dono errado
 

@@ -131,7 +131,7 @@ esperado, obtido, evidência e causa) estão em [BUGS.md](BUGS.md).
 é bug; fica para a validação de contrato da fase 5.
 
 **OBS-02:** pet com tipo inexistente recebe 404 e nada é gravado, mas a recusa só acontece no banco e a resposta
-expõe o nome da exceção.
+expõe o nome da exceção. O mesmo vale para visita de pet inexistente.
 
 ## O que ficou de fora
 
