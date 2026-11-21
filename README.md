@@ -122,7 +122,7 @@ esperado, obtido, evidência e causa) estão em [BUGS.md](BUGS.md).
 | BUG-07 | Apagar um tipo de pet apaga todos os pets desse tipo, de qualquer dono, e as visitas deles | alto | [#7](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/7) |
 | BUG-08 | Corpo ilegível (data inválida, tipo errado ou JSON quebrado) responde 500 em vez de 400 | médio | [#8](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/8) |
 | BUG-09 | Id negativo na URL responde 500 em vez de 400 nas 22 operações que recebem id | médio | [#9](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/9) |
-| BUG-10 | `PUT` de pet e `POST` de visita pelo caminho de outro dono alteram o pet e respondem 204 e 201 | médio | [#10](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/10) |
+| BUG-10 | `PUT` de pet e `POST` de visita pelo caminho de outro dono alteram o pet e respondem 204 e 201; o `POST` de visita aceita até dono inexistente | médio | [#10](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/10) |
 | BUG-11 | `POST` de visita aceita e grava descrição só com espaços | baixo a médio | [#11](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/11) |
 | BUG-12 | `POST` de visita aceita data anterior ao nascimento do pet | baixo a médio | [#12](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/12) |
 | BUG-13 | Data enviada como número é lida como dias desde 1970 e gravada: um timestamp vira visita no ano 4,9 milhões, com 201 | baixo a médio | [#13](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/13) |

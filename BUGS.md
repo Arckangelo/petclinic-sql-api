@@ -298,8 +298,9 @@ em 2026-11-15 na `4.0.2` republicada em 2026-11-14 (digest `sha256:daba846d…`)
 - **Issue:** [#10](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/10)
 - **Passos:** `docker compose down -v` → `up -d --wait` → criar os donos A e B, um tipo e um pet do dono A → contar
   as linhas de `owners`, `pets`, `types` e `visits` → `GET /api/owners/{B}/pets/{pet}` →
-  `PUT /api/owners/{B}/pets/{pet}` com novo nome e nova data → `POST /api/owners/{B}/pets/{pet}/visits` → conferir a
-  linha do pet e as visitas dele no banco.
+  `PUT /api/owners/{B}/pets/{pet}` com novo nome e nova data → `POST /api/owners/{B}/pets/{pet}/visits` → repetir o
+  `GET`, o `PUT` e o `POST` de visita com um dono inexistente na URL (o maior id de `owners` + 1) → conferir a linha
+  do pet e as visitas dele no banco.
 - **Esperado:** `404` nos três pedidos, porque o pet não pertence ao dono B, e nenhuma mudança no banco. O contrato
   lista o `404` para o `PUT` e para o `POST` de visita.
 - **Obtido:** o `GET` responde `404`, mas o `PUT` responde `204` e o `POST` de visita responde `201`.
@@ -309,14 +310,21 @@ em 2026-11-15 na `4.0.2` republicada em 2026-11-14 (digest `sha256:daba846d…`)
   | `GET /api/owners/{B}/pets/{pet}` | `404` | nenhum |
   | `PUT /api/owners/{B}/pets/{pet}` | `204` | nome e data do pet alterados; `owner_id` continua o do dono A |
   | `POST /api/owners/{B}/pets/{pet}/visits` | `201` | visita nova ligada ao pet do dono A |
+  | `GET` e `PUT` com dono inexistente na URL | `404` | nenhum |
+  | `POST /api/owners/{inexistente}/pets/{pet}/visits` | `201` | visita nova ligada ao pet do dono A |
 
-  Com um dono inexistente na URL, o `PUT` responde `404` e nada muda.
+  No `POST` de visita, o dono da URL não é usado para nada: nem um dono inexistente é recusado. Visto no
+  `CT-API-VISITS-11`, em 2026-11-21.
 
 - **Evidência no banco:** a linha do pet passa de `Rex`, `2020-05-10`, dono A para `Zeus`, `2019-03-15`, dono A, e
   `visits` passa de 4 para 5 linhas, com a visita nova apontando para o pet do dono A. O dono B continua sem pets.
-  Reproduzido do zero em 2026-11-19, na imagem `4.0.2` (digest `sha256:daba846d…`).
-- **Causa provável:** a API confere só se o dono da URL existe; depois busca o pet pelo id, sem conferir de quem ele
-  é. O `GET` pelo mesmo caminho faz essa conferência, por isso responde `404`.
+  Reproduzido do zero em 2026-11-19, na imagem `4.0.2` (digest `sha256:daba846d…`). O caso do dono inexistente foi
+  reproduzido do zero em 2026-11-21: com o dono 13 inexistente na URL, `visits` passou de 4 para 6 linhas (uma pelo
+  dono B e outra pelo dono 13), as duas no pet do dono A, e o dono 13 continuou sem existir.
+- **Causa provável:** no `PUT` de pet, a API confere só se o dono da URL existe; depois busca o pet pelo id, sem
+  conferir de quem ele é. No `POST` de visita, ela nem confere se o dono existe: busca o pet pelo id e ignora o dono
+  da URL. O `GET` pelo mesmo caminho confere as duas coisas, por isso responde `404`. (Corrigido em 2026-11-21: antes
+  dizia que as duas operações conferiam se o dono existe.)
 - **Impacto:** médio. Os dados de um pet e o histórico de visitas dele podem ser mudados pelo caminho de outro dono,
   e a API confirma a operação como se estivesse certa. Num sistema em que cada pessoa só acessa os próprios dados, isso
   permitiria alterar o pet de outra pessoa.

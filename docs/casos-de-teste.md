@@ -630,7 +630,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Passos** | 1. Enviar POST /api/owners/{A}/pets/{pet de B}/visits.<br>2. Verificar a resposta e as visitas do pet no banco. |
 | **Resultado esperado** | Status 4xx (404 ou 400) e zero visitas. |
 | **Status** | Não executado |
-| **Observações** | O banco só liga visita a pet; a ligação dono-pet no caminho é responsabilidade da API. |
+| **Observações** | O banco só liga visita a pet; a ligação dono-pet no caminho é responsabilidade da API.<br>Em 2026-11-21, a visita pelo dono A no pet do dono B respondeu 201 e foi gravada: é o BUG-10 (CT-BUG-10-01). Com um dono inexistente na URL, também 201: no POST de visita, o dono da URL é ignorado, o que ampliou o BUG-10. Nenhum valor passa hoje, então o caso não entra na coleção do Postman, que continua sem falhas conhecidas. |
 
 #### CT-API-VISITS-12 — Apagar visita
 
@@ -1407,12 +1407,12 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Bug relacionado** | BUG-10 |
 | **Objetivo** | Garantir que a API só altera um pet ou cria visita para ele pelo caminho do dono dele. |
 | **Pré-condições** | Donos A e B, um tipo e um pet do dono A criados via API. |
-| **Dados de teste** | PUT com novo name e nova birthDate; POST de visita com data e descrição. Os dois com o id do dono B na URL. |
-| **Passos** | 1. Guardar a linha do pet e contar as visitas dele.<br>2. Enviar PUT /api/owners/{B}/pets/{pet}.<br>3. Enviar POST /api/owners/{B}/pets/{pet}/visits.<br>4. Conferir a linha do pet e as visitas de novo. |
-| **Resultado esperado** | Passos 2 e 3: status 404.<br>Passo 4: linha do pet igual à do passo 1 e mesma contagem de visitas. |
-| **Resultado obtido** | Passo 2: 204. Passo 3: 201. Passo 4: nome e data alterados e uma visita a mais (BUGS.md). |
+| **Dados de teste** | PUT com novo name e nova birthDate; POST de visita com data e descrição. Os dois com o id do dono B na URL, e o POST de visita também com um dono inexistente (maior id de `owners` + 1). |
+| **Passos** | 1. Guardar a linha do pet e contar as visitas dele.<br>2. Enviar PUT /api/owners/{B}/pets/{pet}.<br>3. Enviar POST /api/owners/{B}/pets/{pet}/visits e POST /api/owners/{inexistente}/pets/{pet}/visits.<br>4. Conferir a linha do pet e as visitas de novo. |
+| **Resultado esperado** | Passos 2 e 3: status 404 em todos.<br>Passo 4: linha do pet igual à do passo 1 e mesma contagem de visitas. |
+| **Resultado obtido** | Passo 2: 204. Passo 3: 201 nos dois. Passo 4: nome e data alterados e duas visitas a mais (BUGS.md). |
 | **Status** | Não executado |
-| **Observações** | Reproduzido do zero em 2026-11-19. Um caso parametrizado por pedido (`pytest.mark.parametrize`). Teardown: visita, pet, tipo e donos; cada remoção aceita "já removido". |
+| **Observações** | Reproduzido do zero em 2026-11-19; o POST de visita com dono inexistente, em 2026-11-21. Um caso parametrizado por pedido (`pytest.mark.parametrize`). Teardown: visitas, pet, tipo e donos; cada remoção aceita "já removido". |
 
 ### tests/api/known_bugs/test_visit_description.py
 
