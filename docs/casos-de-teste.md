@@ -1370,7 +1370,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Bug relacionado** | BUG-08 |
 | **Objetivo** | Garantir que um corpo que não pode ser lido é tratado como erro do cliente, sem expor detalhes internos. |
 | **Pré-condições** | Dono, tipo e pet (nascido antes de 2021) criados via API. |
-| **Dados de teste** | Pet com birthDate `'2020-02-30'`, `'04/03/2010'` e `'ontem'`; pet com `type.id` em texto; dono com JSON quebrado; visita com date `'2021-02-29'` (CT-API-VISITS-07). |
+| **Dados de teste** | Pet com birthDate `'2020-02-30'`, `'04/03/2010'` e `'ontem'`; pet com `type.id` em texto; dono com JSON quebrado; visita com date `'2021-02-29'` (CT-API-VISITS-07), `'04/03/2010'`, `'yesterday'` e `'ontem'` (CT-API-VISITS-08). |
 | **Passos** | 1. Contar as linhas de `owners`, `pets` e `visits`.<br>2. Enviar cada pedido.<br>3. Verificar cada resposta.<br>4. Contar as linhas de novo. |
 | **Resultado esperado** | Passo 3: status 400 em todos, sem nome de exceção Java no corpo.<br>Passo 4: mesmas contagens do passo 1. |
 | **Resultado obtido** | Passo 3: status 500 com `HttpMessageNotReadableException`. Passo 4: contagens iguais (BUGS.md). |

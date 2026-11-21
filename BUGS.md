@@ -250,6 +250,7 @@ em 2026-11-15 na `4.0.2` republicada em 2026-11-14 (digest `sha256:daba846d…`)
   | Pet com `type.id` em texto | `500` |
   | Visita com `date` `2020-02-30` | `500` |
   | Visita com `date` `2021-02-29` (29/02 em ano não bissexto), visto em 2026-11-20 | `500` |
+  | Visita com `date` `04/03/2010`, `yesterday` e `ontem`, visto em 2026-11-21 | `500` |
 
 - **Evidência no banco:** `pets` tem 13 linhas antes e depois dos três pedidos com data inválida. Reproduzido do zero
   em 2026-11-18, na imagem `4.0.2` (digest `sha256:daba846d…`).
