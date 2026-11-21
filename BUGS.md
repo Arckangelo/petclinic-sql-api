@@ -6,7 +6,7 @@ detalhes de cada um: passos, esperado, obtido, evidência no banco e, quando con
 Ambiente: `springcommunity/spring-petclinic-rest:latest` (4.0.2) com `postgres:16.3`, via `docker compose`. Todos
 reproduzidos do zero (`docker compose down -v` e `up -d --wait`). BUG-01, BUG-02 e BUG-03 foram reproduzidos de novo
 em 2026-11-15 na `4.0.2` republicada em 2026-11-14 (digest `sha256:daba846d…`); o BUG-04 foi reproduzido nela em
-2026-11-17, o BUG-05, o BUG-06, o BUG-07, o BUG-08 e o BUG-09, em 2026-11-18, o BUG-10, em 2026-11-19, e o BUG-11 e o BUG-12, em 2026-11-20.
+2026-11-17, o BUG-05, o BUG-06, o BUG-07, o BUG-08 e o BUG-09, em 2026-11-18, o BUG-10, em 2026-11-19, o BUG-11 e o BUG-12, em 2026-11-20, e o BUG-13, em 2026-11-21.
 
 | Bug | Resumo | Impacto | Issue |
 |:---|:---|:---|:---|
@@ -22,6 +22,7 @@ em 2026-11-15 na `4.0.2` republicada em 2026-11-14 (digest `sha256:daba846d…`)
 | [BUG-10](#bug-10--dono-da-url-não-é-conferido-ao-alterar-pet-nem-ao-criar-visita) | Dono da URL não é conferido ao alterar pet nem ao criar visita | médio | [#10](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/10) |
 | [BUG-11](#bug-11--descrição-de-visita-só-com-espaços-é-aceita-e-gravada) | Descrição de visita só com espaços é aceita e gravada | baixo a médio | [#11](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/11) |
 | [BUG-12](#bug-12--visita-com-data-anterior-ao-nascimento-do-pet-é-aceita) | Visita com data anterior ao nascimento do pet é aceita | baixo a médio | [#12](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/12) |
+| [BUG-13](#bug-13--data-enviada-como-número-é-aceita-e-gravada-como-outra-data) | Data enviada como número é aceita e gravada como outra data | baixo a médio | [#13](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/13) |
 
 ## BUG-01 · API responde 500 em vez de 400 quando o id do dono não é numérico
 
@@ -370,6 +371,43 @@ em 2026-11-15 na `4.0.2` republicada em 2026-11-14 (digest `sha256:daba846d…`)
   data da visita com ela nem impõe qualquer limite.
 - **Impacto:** baixo a médio. O histórico do pet fica com atendimentos impossíveis, e relatórios por período contam
   visitas que não existiram. O banco não impede: nenhuma restrição compara as duas datas.
+
+## BUG-13 · Data enviada como número é aceita e gravada como outra data
+
+- **Issue:** [#13](https://github.com/angelo-roque-barbosa/petclinic-sql-api/issues/13)
+- **Passos:** `docker compose down -v` → `up -d --wait` → criar um dono, um tipo e um pet nascido em `2005-01-15` →
+  contar as linhas de `visits` → `POST /api/owners/{ownerId}/pets/{petId}/visits` com `"date": 20100403`, sem
+  aspas, depois com `"date": 1795265233` (timestamp Unix em segundos) e `"date": 2010` → `PUT /api/visits/{id}` de
+  uma visita existente com `"date": 14000` → `POST /api/owners/{ownerId}/pets` com `"birthDate": 14000` → conferir
+  as datas no banco.
+- **Esperado:** `400 Bad Request` apontando o campo, sem gravar nada. O contrato define `date` e `birthDate` como
+  `type: string, format: date`; um número não é uma data nesse formato.
+- **Obtido:** a API lê o número como dias contados a partir de 1970-01-01, responde `201` ou `204` e grava a data
+  calculada.
+
+  | Pedido | Resposta | Data gravada |
+  |:---|:---|:---|
+  | Visita com `date` `20100403` | `201` | 57003-01-14 |
+  | Visita com `date` `1795265233` (timestamp em segundos) | `201` | 4917239-04-06 |
+  | Visita com `date` `2010` | `201` | 1975-07-04 |
+  | `PUT` de visita com `date` `14000` | `204` | 2008-05-01, no lugar da data anterior |
+  | Pet com `birthDate` `14000` | `201` | 2008-05-01 |
+  | Pet com `birthDate` `20100403` | `400` | nada: só recusado porque 57003 cai na regra "nascimento no futuro" |
+
+  Com o número em texto (`"20100403"`) ou com timestamp em milissegundos, a resposta é `500` (BUG-08) e nada é
+  gravado. Com o número `0` a data gravada é 1970-01-01, e com `-1`, 1969-12-31.
+- **Evidência no banco:** as linhas novas de `visits` com `visit_date` 57003-01-14, 4917239-04-06 e 1975-07-04, a
+  visita alterada para 2008-05-01, o pet com `birth_date` 2008-05-01, e as contagens de donos, pets, tipos e visitas:
+  10, 13, 6 e 4 antes; 11, 15, 7 e 8 com os dados do teste (dono, tipo, dois pets, três visitas com número e uma de
+  controle); 10, 13, 6 e 4 depois da limpeza.
+  Reproduzido do zero em 2026-11-21, na imagem `4.0.2` (digest `sha256:daba846d…`).
+- **Causa provável:** o desserializador de `LocalDate` do Jackson aceita, por padrão, um número inteiro e o
+  interpreta como "dia desde 1970-01-01" (`LocalDate.ofEpochDay`). A API não desliga esse comportamento nem valida
+  o tipo do campo antes de usá-lo.
+- **Impacto:** baixo a médio. Pela tela ninguém cai nisso, porque o frontend e o Swagger mandam texto; quem cai é quem
+  integra com a API. O erro mais provável é mandar um timestamp, que vira uma visita no ano 4,9 milhões, com `201`,
+  sem nenhum aviso. Os dados ficam corrompidos em silêncio, o que é pior do que o `500` do BUG-08, que não grava
+  nada. O banco não impede: o PostgreSQL aceita datas até o ano 5874897.
 
 ## Observações
 

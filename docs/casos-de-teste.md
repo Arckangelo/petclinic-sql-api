@@ -1,6 +1,6 @@
 # Casos de teste — petclinic-sql-api
 
-Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um por teste a automatizar, identificados pelo ID CT que vai no comentário acima do teste no código. Os arquivos de cada seção são os previstos em `tests/api/`; nenhum existe ainda. A exceção é a seção Postman, que já roda na coleção. Total: 90 casos.
+Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um por teste a automatizar, identificados pelo ID CT que vai no comentário acima do teste no código. Os arquivos de cada seção são os previstos em `tests/api/`; nenhum existe ainda. A exceção é a seção Postman, que já roda na coleção. Total: 91 casos.
 
 **Notas gerais**
 
@@ -37,8 +37,8 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | Bugs conhecidos | [tests/api/known_bugs/test_path_id.py](#testsapiknown_bugstest_path_idpy) | 1 |
 | Bugs conhecidos | [tests/api/known_bugs/test_pet_owner_path.py](#testsapiknown_bugstest_pet_owner_pathpy) | 1 |
 | Bugs conhecidos | [tests/api/known_bugs/test_visit_description.py](#testsapiknown_bugstest_visit_descriptionpy) | 1 |
-| Bugs conhecidos | [tests/api/known_bugs/test_visit_date.py](#testsapiknown_bugstest_visit_datepy) | 1 |
-| **Total** | | **90** |
+| Bugs conhecidos | [tests/api/known_bugs/test_visit_date.py](#testsapiknown_bugstest_visit_datepy) | 2 |
+| **Total** | | **91** |
 
 ## API
 
@@ -581,11 +581,11 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Prioridade** | Alta |
 | **Objetivo** | Garantir que a API não grava uma data diferente da que a pessoa quis dizer. |
 | **Pré-condições** | Dono, tipo e pet nascido antes de 2010, criados via API. |
-| **Dados de teste** | date = `'04/03/2010'`, `'yesterday'`, `'ontem'`. |
+| **Dados de teste** | date = `'04/03/2010'`, `'yesterday'`, `'ontem'` e o número `20100403`, sem aspas. |
 | **Passos** | 1. Para cada data, enviar POST /api/owners/{ownerId}/pets/{petId}/visits.<br>2. Verificar a resposta e as visitas do pet no banco. |
 | **Resultado esperado** | Status 400 em todos e zero visitas (em particular, nenhuma com 2010-04-03 ou com a data de ontem). |
 | **Status** | Não executado |
-| **Observações** | Dicionário: o banco grava `'04/03/2010'` como 3 de abril (DateStyle MDY) e `'yesterday'` como a data de ontem, sem erro. |
+| **Observações** | Dicionário: o banco grava `'04/03/2010'` como 3 de abril (DateStyle MDY) e `'yesterday'` como a data de ontem, sem erro.<br>Em 2026-11-21, os três textos responderam 500 sem gravar nada: é o BUG-08 (CT-BUG-08-01). O número `20100403` foi aceito com 201 e gravado como 57003-01-14, porque a API lê número como dias desde 1970: é o BUG-13 (CT-BUG-13-01). Nenhum valor passa hoje, então o caso não entra na coleção do Postman, que continua sem falhas conhecidas. Formatos tolerados que mantêm a data certa não contam como defeito: `'2010-04-03T10:00:00'` (a hora é descartada), `' 2010-04-03'` e `[2010,4,3]` foram gravados como 2010-04-03. |
 
 #### CT-API-VISITS-09 — Visita duplicada
 
@@ -1451,3 +1451,20 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Resultado obtido** | Passo 3: status 201 nos dois. Passo 4: duas visitas a mais, com data anterior ao nascimento (BUGS.md). |
 | **Status** | Não executado |
 | **Observações** | Reproduzido do zero em 2026-11-20. Um caso parametrizado por data (`pytest.mark.parametrize`). Teardown: visitas, pet, tipo e dono; cada remoção aceita "já removido". |
+
+#### CT-BUG-13-01 — [BUG-13] Data enviada como número é recusada
+
+| Campo | Descrição |
+|---|---|
+| **Módulo / Área** | Bugs conhecidos › API › Visitas e Pets › Datas |
+| **Tipo de teste** | Robustez – tipo de dado inválido |
+| **Prioridade** | Média |
+| **Bug relacionado** | BUG-13 |
+| **Objetivo** | Garantir que a API recusa número nos campos de data, em vez de gravar outra data. |
+| **Pré-condições** | Dono, tipo, pet nascido em 2005 e uma visita dele, criados via API. |
+| **Dados de teste** | Visita (POST) com date `20100403`, `1795265233` (timestamp em segundos) e `2010`, sem aspas; visita (PUT) com date `14000`; pet (POST) com birthDate `14000`. |
+| **Passos** | 1. Contar as linhas de `pets` e `visits` e guardar a data da visita existente.<br>2. Enviar cada pedido.<br>3. Verificar cada resposta.<br>4. Contar de novo e conferir a data da visita existente. |
+| **Resultado esperado** | Passo 3: status 400 apontando o campo.<br>Passo 4: mesmas contagens e a data da visita existente sem mudança. |
+| **Resultado obtido** | Passo 3: 201 nos POST e 204 no PUT. Passo 4: três visitas e um pet a mais, com datas como 57003-01-14 e 4917239-04-06, e a visita existente com 2008-05-01 (BUGS.md). |
+| **Status** | Não executado |
+| **Observações** | Reproduzido do zero em 2026-11-21. Um caso parametrizado por pedido (`pytest.mark.parametrize`). O contrato define os campos como `type: string, format: date`. Teardown: visitas, pets, tipo e dono; cada remoção aceita "já removido". |
