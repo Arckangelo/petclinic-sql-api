@@ -3054,6 +3054,44 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "CT-API-VISITS-12",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/visits/{{deleteVisitId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "visits",
+                "{{deleteVisitId}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Cria duas visitas no pet do CT-API-PETS-01: a que será apagada e outra,\n// que tem de continuar; depois conta as visitas\nconst base = pm.environment.get(\"baseUrl\");\nconst visitsPath = \"/owners/\" + pm.collectionVariables.get(\"ownerId\") + \"/pets/\" + pm.collectionVariables.get(\"petId\") + \"/visits\";\n\nfunction post(data, next) {\n  pm.sendRequest({\n    url: base + visitsPath,\n    method: \"POST\",\n    header: { \"Content-Type\": \"application/json\" },\n    body: { mode: \"raw\", raw: JSON.stringify(data) }\n  }, (err, res) => {\n    if (err) throw err;\n    if (res.code !== 201) throw new Error(\"Preparação falhou: POST da visita devolveu \" + res.code);\n    next(res.json());\n  });\n}\n\npost({ date: \"2026-11-06\", description: \"Retorno\" }, (target) => {\n  pm.collectionVariables.set(\"deleteVisitId\", target.id);\n  post({ date: \"2026-11-07\", description: \"Vacina\" }, (kept) => {\n    pm.collectionVariables.set(\"keptVisitId\", kept.id);\n    pm.sendRequest(base + \"/visits\", (err, res) => {\n      if (err) throw err;\n      pm.collectionVariables.set(\"visitsCountBefore\", res.json().length);\n    });\n  });\n});\n"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const base = pm.environment.get(\"baseUrl\");\nconst deletedId = String(pm.collectionVariables.get(\"deleteVisitId\"));\nconst keptId = String(pm.collectionVariables.get(\"keptVisitId\"));\nconst countBefore = Number(pm.collectionVariables.get(\"visitsCountBefore\"));\n\npm.test(\"status 204\", () => pm.response.to.have.status(204));\n\npm.test(\"responde em menos de 500 ms\", () => {\n  pm.expect(pm.response.responseTime).to.be.below(500);\n});\n\n// A visita apagada não pode mais ser encontrada\npm.sendRequest(base + \"/visits/\" + deletedId, (err, res) => {\n  pm.test(\"visita apagada não existe mais (GET devolve 404)\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(404);\n  });\n});\n\n// Saiu exatamente uma visita\npm.sendRequest(base + \"/visits\", (err, res) => {\n  pm.test(\"uma visita a menos no total\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.json().length).to.eql(countBefore - 1);\n  });\n});\n\n// O pet continua, sem a visita apagada e com a outra\npm.sendRequest(base + \"/pets/\" + pm.collectionVariables.get(\"petId\"), (err, res) => {\n  pm.test(\"pet continua, com a outra visita e sem a apagada\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(200);\n    const ids = res.json().visits.map((v) => String(v.id));\n    pm.expect(ids, \"visitas do pet\").to.include(keptId);\n    pm.expect(ids, \"visitas do pet\").to.not.include(deletedId);\n  });\n});\n"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -3229,6 +3267,35 @@
                 "type": "text/javascript",
                 "exec": [
                   "// Apaga as duas visitas: a deste request (na URL) e a criada no Before request\nconst base = pm.environment.get(\"baseUrl\");\nconst url = pm.variables.replaceIn(pm.request.url.toString());\nconst firstUrl = base + \"/visits/\" + pm.collectionVariables.get(\"firstDuplicateVisitId\");\n\n// \"Já removido\" também é sucesso para uma limpeza\npm.test(\"segunda visita apagada ou já removida (204 ou 404)\", () => {\n  pm.expect(pm.response.code).to.be.oneOf([204, 404]);\n});\n\npm.sendRequest(url, (err, res) => {\n  pm.test(\"segunda visita não existe mais (GET devolve 404)\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(404);\n  });\n\n  pm.sendRequest({ url: firstUrl, method: \"DELETE\" }, (delErr, delRes) => {\n    pm.test(\"primeira visita apagada ou já removida (204 ou 404)\", () => {\n      pm.expect(delErr).to.be.null;\n      pm.expect(delRes.code).to.be.oneOf([204, 404]);\n    });\n\n    pm.sendRequest(firstUrl, (getErr, getRes) => {\n      pm.test(\"primeira visita não existe mais (GET devolve 404)\", () => {\n        pm.expect(getErr).to.be.null;\n        pm.expect(getRes.code).to.eql(404);\n      });\n    });\n  });\n});\n"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Limpeza: CT-API-VISITS-12",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/visits/{{keptVisitId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "visits",
+                "{{keptVisitId}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Apaga a visita que ficou (na URL) e, se ainda existir, a do teste\nconst base = pm.environment.get(\"baseUrl\");\nconst url = pm.variables.replaceIn(pm.request.url.toString());\nconst deletedUrl = base + \"/visits/\" + pm.collectionVariables.get(\"deleteVisitId\");\n\n// \"Já removido\" também é sucesso para uma limpeza\npm.test(\"visita mantida apagada ou já removida (204 ou 404)\", () => {\n  pm.expect(pm.response.code).to.be.oneOf([204, 404]);\n});\n\npm.sendRequest(url, (err, res) => {\n  pm.test(\"visita mantida não existe mais (GET devolve 404)\", () => {\n    pm.expect(err).to.be.null;\n    pm.expect(res.code).to.eql(404);\n  });\n\n  // Numa execução normal, a visita do teste já saiu (404)\n  pm.sendRequest({ url: deletedUrl, method: \"DELETE\" }, (delErr, delRes) => {\n    pm.test(\"visita do teste apagada ou já removida (204 ou 404)\", () => {\n      pm.expect(delErr).to.be.null;\n      pm.expect(delRes.code).to.be.oneOf([204, 404]);\n    });\n\n    pm.sendRequest(deletedUrl, (getErr, getRes) => {\n      pm.test(\"visita do teste não existe mais (GET devolve 404)\", () => {\n        pm.expect(getErr).to.be.null;\n        pm.expect(getRes.code).to.eql(404);\n      });\n    });\n  });\n});\n"
                 ]
               }
             }
@@ -4083,6 +4150,14 @@
     },
     {
       "key": "nonexistentPetId",
+      "value": ""
+    },
+    {
+      "key": "deleteVisitId",
+      "value": ""
+    },
+    {
+      "key": "keptVisitId",
       "value": ""
     }
   ]

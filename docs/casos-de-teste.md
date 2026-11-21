@@ -645,7 +645,7 @@ Casos de teste derivados do [dicionário de dados](dicionario-de-dados.md), um p
 | **Passos** | 1. Enviar DELETE /api/visits/{visitId}.<br>2. Verificar a resposta e o banco. |
 | **Resultado esperado** | Status 2xx; nenhuma linha de `visits` com esse id; o pet continua no banco. |
 | **Status** | Não executado |
-| **Observações** | Dicionário: nada aponta para `visits`, então a exclusão é livre.<br>"Trocar o pet de uma visita" não tem caso: PUT /api/visits/{id} não recebe petId (contrato VisitFields). |
+| **Observações** | Dicionário: nada aponta para `visits`, então a exclusão é livre.<br>"Trocar o pet de uma visita" não tem caso: PUT /api/visits/{id} não recebe petId (contrato VisitFields).<br>Em 2026-11-21, a API respondeu 204, a visita sumiu e o pet continuou, com a outra visita dele. Na coleção do Postman: `CT-API-VISITS-12`, que cria duas visitas no mesmo pet para provar que só a do id enviado sai. |
 
 ### tests/api/test_pet_types.py
 
